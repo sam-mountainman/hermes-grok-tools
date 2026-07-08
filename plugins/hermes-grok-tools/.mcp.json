@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "hermes-grok": {
+      "command": "python3",
+      "args": [
+        "./scripts/hermes_grok_mcp.py"
+      ],
+      "cwd": ".",
+      "startup_timeout_sec": 60,
+      "tool_timeout_sec": 1200,
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  }
+}

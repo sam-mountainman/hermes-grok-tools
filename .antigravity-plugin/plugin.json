@@ -1,0 +1,11 @@
+{
+  "name": "hermes-grok-tools",
+  "version": "0.1.0",
+  "displayName": "Hermes Grok Tools",
+  "description": "Hermes Agent Grok OAuth tools for Antigravity.",
+  "author": {
+    "name": "higataiyu"
+  },
+  "icon": "./plugins/hermes-grok-tools/assets/hermesagent.png",
+  "mcpServers": "./mcp_config.json"
+}

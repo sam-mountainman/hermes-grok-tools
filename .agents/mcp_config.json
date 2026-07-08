@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "hermes-grok": {
+      "command": "python3",
+      "args": [
+        "./plugins/hermes-grok-tools/scripts/hermes_grok_mcp.py"
+      ],
+      "cwd": ".",
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  }
+}

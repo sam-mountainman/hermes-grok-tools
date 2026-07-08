@@ -1,0 +1,22 @@
+{
+  "name": "hermes-grok-tools",
+  "description": "Hermes Agent Grok OAuth tools for Claude Code.",
+  "owner": {
+    "name": "higataiyu"
+  },
+  "metadata": {
+    "description": "Marketplace for installing Hermes Grok Tools as a Claude Code plugin."
+  },
+  "plugins": [
+    {
+      "name": "hermes-grok-tools",
+      "version": "0.1.0+codex.20260708135129",
+      "source": "./plugins/hermes-grok-tools",
+      "description": "MCP bridge for Hermes Agent Grok OAuth X search, Grok image generation, and Grok video generation.",
+      "author": {
+        "name": "higataiyu"
+      },
+      "category": "productivity"
+    }
+  ]
+}
