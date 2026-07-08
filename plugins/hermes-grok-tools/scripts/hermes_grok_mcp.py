@@ -30,6 +30,15 @@ def _candidate_hermes_paths() -> list[Path]:
         paths.append(Path(env_path).expanduser())
 
     home = Path.home()
+    local_appdata = os.environ.get("LOCALAPPDATA", "").strip()
+    if local_appdata:
+        paths.extend(
+            [
+                Path(local_appdata) / "hermes" / "hermes-agent",
+                Path(local_appdata) / "hermes-grok-tools" / "hermes-agent",
+            ]
+        )
+
     paths.extend(
         [
             home / ".hermes" / "hermes-agent",

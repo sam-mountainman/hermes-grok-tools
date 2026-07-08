@@ -6,8 +6,16 @@ alwaysApply: true
 
 When the user gives this repository URL and asks Cursor to set it up, clone the repo and run:
 
+macOS / Linux:
+
 ```bash
 ./install.sh
+```
+
+Windows native PowerShell:
+
+```powershell
+.\install.ps1
 ```
 
 The installer detects Cursor where possible and installs the repository plugin as a local Cursor plugin under `~/.cursor/plugins/local/hermes-grok-tools`. It does not use direct `cursor --add-mcp` registration.
@@ -18,4 +26,10 @@ If auto-detection fails, run:
 
 ```bash
 ./install.sh --target cursor
+```
+
+Windows native:
+
+```powershell
+.\install.ps1 -Target cursor
 ```
