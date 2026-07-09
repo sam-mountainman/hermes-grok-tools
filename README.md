@@ -132,6 +132,27 @@ AI エージェントが plugin tool を呼ぶときは、`quality` で切り替
 
 注意: `grok-imagine-video-1.5` は text-to-video には使えません。高品質動画を使う場合は `image_url` / `reference_image_urls`、または video edit / extend の `video_url` が必要です。テキストだけで動画を作る場合は `quality: "standard"` を使います。
 
+## 生成前の質問ルール
+
+AI エージェントは、画像・動画生成 tool を呼ぶ前に、足りない設定だけをユーザーに確認します。ホストが対応している場合は `AskUserQuestion` / `request_user_input` のような構造化質問 UI を使い、未対応なら短いテキスト質問に fallback します。
+
+既にユーザーが指定している項目は聞き直しません。ユーザーが「任せる」「いい感じに」と言った場合は、通常品質と自然な初期値を選び、tool には `confirmed_settings: true` を渡します。
+
+| Tool | 事前に確認する項目 |
+|---|---|
+| `hermes_grok_image` | 品質、縦横比 |
+| `hermes_grok_video` | 品質、秒数、縦横比 |
+| `hermes_grok_video_edit` | 品質 |
+| `hermes_grok_video_extend` | 品質、延長秒数 |
+
+質問の選択肢は、非エンジニア向けにします。
+
+- 品質: 通常 / 高品質
+- 秒数: 5秒 / 10秒 / 指定
+- 縦横比: 16:9 / 9:16 / 1:1
+
+ユーザーには `grok-imagine-video-1.5` のような model ID を直接聞きません。高度な指定をユーザーが明示した場合だけ、`model` を直接渡します。
+
 ## 認証条件
 
 Grok OAuth は初回だけ人間のブラウザ/device login が必要です。

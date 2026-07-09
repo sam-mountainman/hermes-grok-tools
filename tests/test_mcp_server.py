@@ -84,3 +84,44 @@ def test_video_quality_alias_rejects_text_only_generation():
         assert "does not support text-to-video" in str(exc)
     else:
         raise AssertionError("Expected HermesBridgeError")
+
+
+def test_generation_settings_require_structured_question_before_image_defaults():
+    try:
+        hermes_grok_mcp._require_generation_settings(
+            {"prompt": "a cat"},
+            tool_name="hermes_grok_image",
+            fields=["quality_or_model", "aspect_ratio"],
+        )
+    except hermes_grok_mcp.HermesBridgeError as exc:
+        message = str(exc)
+        assert "AskUserQuestion" in message
+        assert "quality" in message
+        assert "aspect_ratio" in message
+    else:
+        raise AssertionError("Expected HermesBridgeError")
+
+
+def test_generation_settings_confirmation_allows_defaults_and_strips_flag():
+    args = hermes_grok_mcp._require_generation_settings(
+        {"prompt": "a cat", "confirmed_settings": True},
+        tool_name="hermes_grok_image",
+        fields=["quality_or_model", "aspect_ratio"],
+    )
+    assert args == {"prompt": "a cat"}
+
+
+def test_generation_settings_explicit_video_values_do_not_need_confirmation():
+    args = hermes_grok_mcp._require_generation_settings(
+        {
+            "prompt": "a scene",
+            "quality": "standard",
+            "duration": 5,
+            "aspect_ratio": "16:9",
+        },
+        tool_name="hermes_grok_video",
+        fields=["quality_or_model", "duration", "aspect_ratio"],
+    )
+    assert args["quality"] == "standard"
+    assert args["duration"] == 5
+    assert args["aspect_ratio"] == "16:9"

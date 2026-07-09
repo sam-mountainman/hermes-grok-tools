@@ -35,3 +35,5 @@ Windows native:
 ```
 
 The installer sets default lower-cost Imagine models: `grok-imagine-image` for images and `grok-imagine-video` for videos. The plugin tools accept `quality`: `standard` keeps those defaults, while `quality` / `high` / `high_quality` selects `grok-imagine-image-quality` or `grok-imagine-video-1.5`. `grok-imagine-video-1.5` needs image/video input and should not be used for text-only video generation.
+
+Before calling image/video generation tools, ask only for missing settings that affect output or cost. Use Cursor's structured question UI when available; otherwise ask a concise text fallback. Do not ask users to choose raw model IDs. Ask for quality and aspect ratio for images; quality, duration seconds, and aspect ratio for video generation; quality for video edit; quality and extension seconds for video extend. If the user already specified the settings or says to choose automatically, call the tool with `confirmed_settings: true` and sensible defaults.

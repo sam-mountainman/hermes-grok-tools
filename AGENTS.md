@@ -47,4 +47,6 @@ Hermes xAI/Grok OAuth is per-user. If the installer starts `hermes auth add xai-
 
 The installer configures the default lower-cost Imagine models: `grok-imagine-image` for images and `grok-imagine-video` for videos. Plugin tools also accept `quality`: `standard` uses those defaults, while `quality` / `high` / `high_quality` selects `grok-imagine-image-quality` or `grok-imagine-video-1.5`. `grok-imagine-video-1.5` does not support text-to-video; use it only with image/video input.
 
+Before calling image/video generation tools, ask only for missing settings that affect output or cost. Use structured AskUserQuestion/request_user_input UI when the host supports it; otherwise ask a concise text fallback. Do not ask users to choose raw model IDs. Ask for quality and aspect ratio for images; quality, duration seconds, and aspect ratio for video generation; quality for video edit; quality and extension seconds for video extend. If the user already specified the settings or says to choose automatically, call the tool with `confirmed_settings: true` and sensible defaults.
+
 On Windows, do not ask the user to install WSL. `install.ps1` uses Hermes Agent's native Windows installer and creates a `python3.cmd` shim for MCP hosts.

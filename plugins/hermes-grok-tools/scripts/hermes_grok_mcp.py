@@ -28,6 +28,9 @@ VIDEO_IMAGE_OR_VIDEO_INPUT_MODELS = {
 }
 STANDARD_QUALITY_VALUES = {"", "standard", "default", "fast", "economy"}
 HIGH_QUALITY_VALUES = {"quality", "high", "high_quality", "high-quality", "best", "pro"}
+QUALITY_FIELD_HELP = "quality: standard or high/quality; do not ask users to choose raw model IDs"
+DURATION_FIELD_HELP = "duration: video length in seconds, for example 5 or 10"
+ASPECT_RATIO_FIELD_HELP = "aspect_ratio: 16:9, 9:16, 1:1, or another supported ratio"
 
 
 class HermesBridgeError(RuntimeError):
@@ -150,6 +153,47 @@ def _normalize_quality_model_args(
     )
 
 
+def _generation_setting_missing(args: dict[str, Any], field: str) -> bool:
+    if field == "quality_or_model":
+        return not str(args.get("quality") or args.get("model") or "").strip()
+    if field == "duration":
+        return args.get("duration") in (None, "")
+    return not str(args.get(field) or "").strip()
+
+
+def _generation_setting_help(field: str) -> str:
+    if field == "quality_or_model":
+        return QUALITY_FIELD_HELP
+    if field == "duration":
+        return DURATION_FIELD_HELP
+    if field == "aspect_ratio":
+        return ASPECT_RATIO_FIELD_HELP
+    return field
+
+
+def _require_generation_settings(
+    args: dict[str, Any],
+    *,
+    tool_name: str,
+    fields: list[str],
+) -> dict[str, Any]:
+    cleaned = dict(args)
+    confirmed = bool(cleaned.pop("confirmed_settings", False))
+    missing = [field for field in fields if _generation_setting_missing(cleaned, field)]
+    if confirmed or not missing:
+        return cleaned
+
+    questions = "; ".join(_generation_setting_help(field) for field in missing)
+    raise HermesBridgeError(
+        f"{tool_name} needs user-confirmed generation settings before running. "
+        "Ask the user with a structured AskUserQuestion/request_user_input UI when the host supports it, "
+        "or a concise text fallback when it does not. "
+        f"Ask for: {questions}. "
+        "Then call this tool again with confirmed_settings=true. "
+        "If the user says to choose automatically, use quality=standard and sensible defaults."
+    )
+
+
 def _normalize_image_args(args: dict[str, Any]) -> dict[str, Any]:
     return _normalize_quality_model_args(
         args,
@@ -250,7 +294,12 @@ def tool_grok_image(args: dict[str, Any]) -> dict[str, Any]:
         pass
     from tools.image_generation_tool import _handle_image_generate
 
-    return _call_hermes_handler(_handle_image_generate, _normalize_image_args(args))
+    confirmed_args = _require_generation_settings(
+        args,
+        tool_name="hermes_grok_image",
+        fields=["quality_or_model", "aspect_ratio"],
+    )
+    return _call_hermes_handler(_handle_image_generate, _normalize_image_args(confirmed_args))
 
 
 def tool_grok_video(args: dict[str, Any]) -> dict[str, Any]:
@@ -261,7 +310,12 @@ def tool_grok_video(args: dict[str, Any]) -> dict[str, Any]:
         pass
     from tools.video_generation_tool import _handle_video_generate
 
-    return _call_hermes_handler(_handle_video_generate, _normalize_video_args(args))
+    confirmed_args = _require_generation_settings(
+        args,
+        tool_name="hermes_grok_video",
+        fields=["quality_or_model", "duration", "aspect_ratio"],
+    )
+    return _call_hermes_handler(_handle_video_generate, _normalize_video_args(confirmed_args))
 
 
 def tool_grok_video_edit(args: dict[str, Any]) -> dict[str, Any]:
@@ -272,7 +326,12 @@ def tool_grok_video_edit(args: dict[str, Any]) -> dict[str, Any]:
         pass
     from tools.xai_video_tools import _handle_xai_video_edit
 
-    return _call_hermes_handler(_handle_xai_video_edit, _normalize_video_with_input_args(args))
+    confirmed_args = _require_generation_settings(
+        args,
+        tool_name="hermes_grok_video_edit",
+        fields=["quality_or_model"],
+    )
+    return _call_hermes_handler(_handle_xai_video_edit, _normalize_video_with_input_args(confirmed_args))
 
 
 def tool_grok_video_extend(args: dict[str, Any]) -> dict[str, Any]:
@@ -283,7 +342,12 @@ def tool_grok_video_extend(args: dict[str, Any]) -> dict[str, Any]:
         pass
     from tools.xai_video_tools import _handle_xai_video_extend
 
-    return _call_hermes_handler(_handle_xai_video_extend, _normalize_video_with_input_args(args))
+    confirmed_args = _require_generation_settings(
+        args,
+        tool_name="hermes_grok_video_extend",
+        fields=["quality_or_model", "duration"],
+    )
+    return _call_hermes_handler(_handle_xai_video_extend, _normalize_video_with_input_args(confirmed_args))
 
 
 TOOLS: dict[str, dict[str, Any]] = {
@@ -310,11 +374,15 @@ TOOLS: dict[str, dict[str, Any]] = {
         "handler": tool_x_search,
     },
     "hermes_grok_image": {
-        "description": "Generate or edit images with Hermes Agent image_generate configured for xAI Grok Imagine. quality=standard uses grok-imagine-image; quality=high/quality uses grok-imagine-image-quality. Explicit model overrides quality.",
+        "description": "Generate or edit images with Hermes Agent image_generate configured for xAI Grok Imagine. Before calling, ask for missing quality/model and aspect_ratio with structured AskUserQuestion/request_user_input UI when available, then set confirmed_settings=true. Ask users for quality, not raw model IDs. quality=standard uses grok-imagine-image; quality=high/quality uses grok-imagine-image-quality. Explicit model overrides quality.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "prompt": {"type": "string"},
+                "confirmed_settings": {
+                    "type": "boolean",
+                    "description": "Set true only after the user supplied, approved, or delegated the missing generation settings.",
+                },
                 "quality": {
                     "type": "string",
                     "enum": ["standard", "quality", "high", "high_quality"],
@@ -333,11 +401,15 @@ TOOLS: dict[str, dict[str, Any]] = {
         "handler": tool_grok_image,
     },
     "hermes_grok_video": {
-        "description": "Generate text-to-video, image-to-video, or reference-to-video with Hermes Agent video_generate configured for xAI Grok Imagine. quality=standard uses grok-imagine-video; quality=high/quality uses grok-imagine-video-1.5, which needs image input. Explicit model overrides quality.",
+        "description": "Generate text-to-video, image-to-video, or reference-to-video with Hermes Agent video_generate configured for xAI Grok Imagine. Before calling, ask for missing quality/model, duration seconds, and aspect_ratio with structured AskUserQuestion/request_user_input UI when available, then set confirmed_settings=true. Ask users for quality and seconds, not raw model IDs. quality=standard uses grok-imagine-video; quality=high/quality uses grok-imagine-video-1.5, which needs image input. Explicit model overrides quality.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "prompt": {"type": "string"},
+                "confirmed_settings": {
+                    "type": "boolean",
+                    "description": "Set true only after the user supplied, approved, or delegated quality/model, duration, and aspect ratio.",
+                },
                 "quality": {
                     "type": "string",
                     "enum": ["standard", "quality", "high", "high_quality"],
@@ -358,12 +430,16 @@ TOOLS: dict[str, dict[str, Any]] = {
         "handler": tool_grok_video,
     },
     "hermes_grok_video_edit": {
-        "description": "Edit an existing public HTTPS MP4 with xAI Imagine through Hermes Agent. quality=standard uses grok-imagine-video; quality=high/quality uses grok-imagine-video-1.5. Explicit model overrides quality.",
+        "description": "Edit an existing public HTTPS MP4 with xAI Imagine through Hermes Agent. Before calling, ask for missing quality/model with structured AskUserQuestion/request_user_input UI when available, then set confirmed_settings=true. Ask users for quality, not raw model IDs. quality=standard uses grok-imagine-video; quality=high/quality uses grok-imagine-video-1.5. Explicit model overrides quality.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "prompt": {"type": "string"},
                 "video_url": {"type": "string"},
+                "confirmed_settings": {
+                    "type": "boolean",
+                    "description": "Set true only after the user supplied, approved, or delegated the quality/model setting.",
+                },
                 "quality": {
                     "type": "string",
                     "enum": ["standard", "quality", "high", "high_quality"],
@@ -375,13 +451,17 @@ TOOLS: dict[str, dict[str, Any]] = {
         "handler": tool_grok_video_edit,
     },
     "hermes_grok_video_extend": {
-        "description": "Extend an existing public HTTPS MP4 with xAI Imagine through Hermes Agent. quality=standard uses grok-imagine-video; quality=high/quality uses grok-imagine-video-1.5. Explicit model overrides quality.",
+        "description": "Extend an existing public HTTPS MP4 with xAI Imagine through Hermes Agent. Before calling, ask for missing quality/model and duration seconds with structured AskUserQuestion/request_user_input UI when available, then set confirmed_settings=true. Ask users for quality and seconds, not raw model IDs. quality=standard uses grok-imagine-video; quality=high/quality uses grok-imagine-video-1.5. Explicit model overrides quality.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "prompt": {"type": "string"},
                 "video_url": {"type": "string"},
                 "duration": {"type": "integer"},
+                "confirmed_settings": {
+                    "type": "boolean",
+                    "description": "Set true only after the user supplied, approved, or delegated quality/model and duration.",
+                },
                 "quality": {
                     "type": "string",
                     "enum": ["standard", "quality", "high", "high_quality"],
