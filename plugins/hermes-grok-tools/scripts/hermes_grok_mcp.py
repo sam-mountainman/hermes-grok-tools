@@ -17,6 +17,17 @@ from typing import Any, Callable
 
 SERVER_NAME = "hermes-grok"
 SERVER_VERSION = "0.1.0"
+IMAGE_STANDARD_MODEL = "grok-imagine-image"
+IMAGE_QUALITY_MODEL = "grok-imagine-image-quality"
+VIDEO_STANDARD_MODEL = "grok-imagine-video"
+VIDEO_QUALITY_MODEL = "grok-imagine-video-1.5"
+VIDEO_IMAGE_OR_VIDEO_INPUT_MODELS = {
+    VIDEO_QUALITY_MODEL,
+    "grok-imagine-video-1.5-preview",
+    "grok-imagine-video-1.5-2026-05-30",
+}
+STANDARD_QUALITY_VALUES = {"", "standard", "default", "fast", "economy"}
+HIGH_QUALITY_VALUES = {"quality", "high", "high_quality", "high-quality", "best", "pro"}
 
 
 class HermesBridgeError(RuntimeError):
@@ -113,6 +124,65 @@ def _call_hermes_handler(handler: Callable[[dict[str, Any]], str], args: dict[st
     }
 
 
+def _normalize_quality_model_args(
+    args: dict[str, Any],
+    *,
+    standard_model: str,
+    quality_model: str,
+) -> dict[str, Any]:
+    normalized = dict(args)
+    raw_quality = normalized.pop("quality", "standard")
+    explicit_model = str(normalized.get("model") or "").strip()
+    if explicit_model:
+        normalized["model"] = explicit_model
+        return normalized
+
+    quality = str(raw_quality or "standard").strip().lower().replace(" ", "_")
+    if quality in STANDARD_QUALITY_VALUES:
+        normalized["model"] = standard_model
+        return normalized
+    if quality in HIGH_QUALITY_VALUES:
+        normalized["model"] = quality_model
+        return normalized
+
+    raise HermesBridgeError(
+        "Unsupported quality value. Use standard, quality, high, or pass an explicit model."
+    )
+
+
+def _normalize_image_args(args: dict[str, Any]) -> dict[str, Any]:
+    return _normalize_quality_model_args(
+        args,
+        standard_model=IMAGE_STANDARD_MODEL,
+        quality_model=IMAGE_QUALITY_MODEL,
+    )
+
+
+def _normalize_video_args(args: dict[str, Any]) -> dict[str, Any]:
+    normalized = _normalize_quality_model_args(
+        args,
+        standard_model=VIDEO_STANDARD_MODEL,
+        quality_model=VIDEO_QUALITY_MODEL,
+    )
+    model = str(normalized.get("model") or "").strip()
+    reference_images = normalized.get("reference_image_urls") or []
+    has_image_input = bool(str(normalized.get("image_url") or "").strip()) or bool(reference_images)
+    if model in VIDEO_IMAGE_OR_VIDEO_INPUT_MODELS and not has_image_input:
+        raise HermesBridgeError(
+            "grok-imagine-video-1.5 does not support text-to-video. "
+            "Provide image_url/reference_image_urls, or use quality=standard/model=grok-imagine-video."
+        )
+    return normalized
+
+
+def _normalize_video_with_input_args(args: dict[str, Any]) -> dict[str, Any]:
+    return _normalize_quality_model_args(
+        args,
+        standard_model=VIDEO_STANDARD_MODEL,
+        quality_model=VIDEO_QUALITY_MODEL,
+    )
+
+
 def tool_status(_: dict[str, Any]) -> dict[str, Any]:
     hermes_cli = shutil.which("hermes")
     import_error = None
@@ -180,7 +250,7 @@ def tool_grok_image(args: dict[str, Any]) -> dict[str, Any]:
         pass
     from tools.image_generation_tool import _handle_image_generate
 
-    return _call_hermes_handler(_handle_image_generate, args)
+    return _call_hermes_handler(_handle_image_generate, _normalize_image_args(args))
 
 
 def tool_grok_video(args: dict[str, Any]) -> dict[str, Any]:
@@ -191,7 +261,7 @@ def tool_grok_video(args: dict[str, Any]) -> dict[str, Any]:
         pass
     from tools.video_generation_tool import _handle_video_generate
 
-    return _call_hermes_handler(_handle_video_generate, args)
+    return _call_hermes_handler(_handle_video_generate, _normalize_video_args(args))
 
 
 def tool_grok_video_edit(args: dict[str, Any]) -> dict[str, Any]:
@@ -202,7 +272,7 @@ def tool_grok_video_edit(args: dict[str, Any]) -> dict[str, Any]:
         pass
     from tools.xai_video_tools import _handle_xai_video_edit
 
-    return _call_hermes_handler(_handle_xai_video_edit, args)
+    return _call_hermes_handler(_handle_xai_video_edit, _normalize_video_with_input_args(args))
 
 
 def tool_grok_video_extend(args: dict[str, Any]) -> dict[str, Any]:
@@ -213,7 +283,7 @@ def tool_grok_video_extend(args: dict[str, Any]) -> dict[str, Any]:
         pass
     from tools.xai_video_tools import _handle_xai_video_extend
 
-    return _call_hermes_handler(_handle_xai_video_extend, args)
+    return _call_hermes_handler(_handle_xai_video_extend, _normalize_video_with_input_args(args))
 
 
 TOOLS: dict[str, dict[str, Any]] = {
@@ -240,11 +310,17 @@ TOOLS: dict[str, dict[str, Any]] = {
         "handler": tool_x_search,
     },
     "hermes_grok_image": {
-        "description": "Generate or edit images with Hermes Agent image_generate configured for xAI Grok Imagine.",
+        "description": "Generate or edit images with Hermes Agent image_generate configured for xAI Grok Imagine. quality=standard uses grok-imagine-image; quality=high/quality uses grok-imagine-image-quality. Explicit model overrides quality.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "prompt": {"type": "string"},
+                "quality": {
+                    "type": "string",
+                    "enum": ["standard", "quality", "high", "high_quality"],
+                    "description": "standard is the default lower-cost model; quality/high selects grok-imagine-image-quality.",
+                },
+                "model": {"type": "string", "description": "Advanced override for the xAI image model."},
                 "aspect_ratio": {
                     "type": "string",
                     "enum": ["landscape", "portrait", "square", "16:9", "9:16", "1:1", "4:3", "3:4", "3:2", "2:3"],
@@ -257,11 +333,16 @@ TOOLS: dict[str, dict[str, Any]] = {
         "handler": tool_grok_image,
     },
     "hermes_grok_video": {
-        "description": "Generate text-to-video, image-to-video, or reference-to-video with Hermes Agent video_generate configured for xAI Grok Imagine.",
+        "description": "Generate text-to-video, image-to-video, or reference-to-video with Hermes Agent video_generate configured for xAI Grok Imagine. quality=standard uses grok-imagine-video; quality=high/quality uses grok-imagine-video-1.5, which needs image input. Explicit model overrides quality.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "prompt": {"type": "string"},
+                "quality": {
+                    "type": "string",
+                    "enum": ["standard", "quality", "high", "high_quality"],
+                    "description": "standard is the default text/image/video model; quality/high selects grok-imagine-video-1.5 for image-to-video/reference-to-video.",
+                },
                 "image_url": {"type": "string"},
                 "reference_image_urls": {"type": "array", "items": {"type": "string"}},
                 "duration": {"type": "integer"},
@@ -277,12 +358,16 @@ TOOLS: dict[str, dict[str, Any]] = {
         "handler": tool_grok_video,
     },
     "hermes_grok_video_edit": {
-        "description": "Edit an existing public HTTPS MP4 with xAI Imagine through Hermes Agent.",
+        "description": "Edit an existing public HTTPS MP4 with xAI Imagine through Hermes Agent. quality=standard uses grok-imagine-video; quality=high/quality uses grok-imagine-video-1.5. Explicit model overrides quality.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "prompt": {"type": "string"},
                 "video_url": {"type": "string"},
+                "quality": {
+                    "type": "string",
+                    "enum": ["standard", "quality", "high", "high_quality"],
+                },
                 "model": {"type": "string"},
             },
             "required": ["prompt", "video_url"],
@@ -290,13 +375,17 @@ TOOLS: dict[str, dict[str, Any]] = {
         "handler": tool_grok_video_edit,
     },
     "hermes_grok_video_extend": {
-        "description": "Extend an existing public HTTPS MP4 with xAI Imagine through Hermes Agent.",
+        "description": "Extend an existing public HTTPS MP4 with xAI Imagine through Hermes Agent. quality=standard uses grok-imagine-video; quality=high/quality uses grok-imagine-video-1.5. Explicit model overrides quality.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "prompt": {"type": "string"},
                 "video_url": {"type": "string"},
                 "duration": {"type": "integer"},
+                "quality": {
+                    "type": "string",
+                    "enum": ["standard", "quality", "high", "high_quality"],
+                },
                 "model": {"type": "string"},
             },
             "required": ["prompt", "video_url"],

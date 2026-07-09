@@ -45,4 +45,6 @@ Do not install this as a bare MCP server unless the user explicitly asks for a f
 
 Hermes xAI/Grok OAuth is per-user. If the installer starts `hermes auth add xai-oauth`, browser/device login may require the user's action.
 
+The installer configures the default lower-cost Imagine models: `grok-imagine-image` for images and `grok-imagine-video` for videos. Plugin tools also accept `quality`: `standard` uses those defaults, while `quality` / `high` / `high_quality` selects `grok-imagine-image-quality` or `grok-imagine-video-1.5`. `grok-imagine-video-1.5` does not support text-to-video; use it only with image/video input.
+
 On Windows, do not ask the user to install WSL. `install.ps1` uses Hermes Agent's native Windows installer and creates a `python3.cmd` shim for MCP hosts.

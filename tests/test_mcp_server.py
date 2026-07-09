@@ -39,3 +39,48 @@ def test_tools_list_response_is_json_serializable():
     )
     encoded = json.dumps(response)
     assert "hermes_x_search" in encoded
+
+
+def test_image_quality_maps_to_expected_models():
+    assert hermes_grok_mcp._normalize_image_args({"prompt": "a cat"})["model"] == "grok-imagine-image"
+    assert (
+        hermes_grok_mcp._normalize_image_args({"prompt": "a cat", "quality": "high"})["model"]
+        == "grok-imagine-image-quality"
+    )
+    assert (
+        hermes_grok_mcp._normalize_image_args(
+            {"prompt": "a cat", "quality": "high", "model": "custom-image-model"}
+        )["model"]
+        == "custom-image-model"
+    )
+    assert "quality" not in hermes_grok_mcp._normalize_image_args({"prompt": "a cat", "quality": "high"})
+
+
+def test_video_quality_maps_to_expected_models():
+    assert hermes_grok_mcp._normalize_video_args({"prompt": "a scene"})["model"] == "grok-imagine-video"
+    assert (
+        hermes_grok_mcp._normalize_video_args(
+            {"prompt": "animate this", "image_url": "https://example.com/image.png", "quality": "quality"}
+        )["model"]
+        == "grok-imagine-video-1.5"
+    )
+
+
+def test_video_quality_model_rejects_text_only_generation():
+    try:
+        hermes_grok_mcp._normalize_video_args({"prompt": "a text only video", "quality": "high"})
+    except hermes_grok_mcp.HermesBridgeError as exc:
+        assert "does not support text-to-video" in str(exc)
+    else:
+        raise AssertionError("Expected HermesBridgeError")
+
+
+def test_video_quality_alias_rejects_text_only_generation():
+    try:
+        hermes_grok_mcp._normalize_video_args(
+            {"prompt": "a text only video", "model": "grok-imagine-video-1.5-preview"}
+        )
+    except hermes_grok_mcp.HermesBridgeError as exc:
+        assert "does not support text-to-video" in str(exc)
+    else:
+        raise AssertionError("Expected HermesBridgeError")

@@ -257,6 +257,7 @@ if (-not $NoHermesConfig) {
     Invoke-Tool $hermes @("plugins", "enable", "video_gen/xai", "--no-allow-tool-override") -IgnoreErrors
     Invoke-Tool $hermes @("config", "set", "image_gen.provider", "xai")
     Invoke-Tool $hermes @("config", "set", "video_gen.provider", "xai")
+    Invoke-Tool $hermes @("config", "set", "image_gen.model", "grok-imagine-image") -IgnoreErrors
     Invoke-Tool $hermes @("config", "set", "video_gen.model", "grok-imagine-video") -IgnoreErrors
 }
 

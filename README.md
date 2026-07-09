@@ -103,6 +103,35 @@ Windows native では `.\install.ps1 -Target gemini` または `.\install.ps1 -T
 - `hermes_grok_video_extend`: 既存の公開 MP4 URL を xAI Imagine で延長
 - `hermes_grok_status`: Hermes / OAuth / provider 設定の見える化
 
+## 画像・動画生成モデル
+
+デフォルトでは、コストを抑える通常モデルを使います。
+
+| 用途 | 通常 | 高品質 |
+|---|---|---|
+| 画像生成・画像編集 | `grok-imagine-image` | `grok-imagine-image-quality` |
+| 動画生成・編集・延長 | `grok-imagine-video` | `grok-imagine-video-1.5` |
+
+AI エージェントが plugin tool を呼ぶときは、`quality` で切り替えできます。
+
+```json
+{
+  "prompt": "cinematic product photo",
+  "quality": "standard"
+}
+```
+
+```json
+{
+  "prompt": "cinematic product photo",
+  "quality": "high"
+}
+```
+
+`standard` は通常モデル、`quality` / `high` / `high_quality` は高品質モデルです。上級者向けには `model` を直接渡せます。`model` がある場合は `quality` より優先されます。
+
+注意: `grok-imagine-video-1.5` は text-to-video には使えません。高品質動画を使う場合は `image_url` / `reference_image_urls`、または video edit / extend の `video_url` が必要です。テキストだけで動画を作る場合は `quality: "standard"` を使います。
+
 ## 認証条件
 
 Grok OAuth は初回だけ人間のブラウザ/device login が必要です。
@@ -138,7 +167,7 @@ cd hermes-grok-tools
 Windows installer が行うこと:
 
 - Hermes CLI が無ければ、Hermes Agent 公式 Windows PowerShell installer を実行
-- Hermes の xAI/Grok provider を設定
+- Hermes の xAI/Grok provider と通常モデル初期値を設定
 - `hermes auth add xai-oauth` を起動し、ブラウザ/device login を促す
 - `%LOCALAPPDATA%\hermes-grok-tools\bin\python3.cmd` を作成し User PATH に追加
 - 現在の AI エージェントに合わせて plugin / extension を install

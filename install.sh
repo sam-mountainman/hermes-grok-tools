@@ -86,6 +86,7 @@ if [[ "$CONFIGURE_HERMES" == "1" ]]; then
   hermes plugins enable video_gen/xai --no-allow-tool-override >/dev/null 2>&1 || true
   hermes config set image_gen.provider xai >/dev/null
   hermes config set video_gen.provider xai >/dev/null
+  hermes config set image_gen.model grok-imagine-image >/dev/null || true
   hermes config set video_gen.model grok-imagine-video >/dev/null || true
 fi
 
