@@ -6,6 +6,6 @@
   "author": {
     "name": "sam-mountainman"
   },
-  "icon": "./plugins/grok-cli-tools/assets/x-logo-black.png",
+  "icon": "./assets/x-logo-black.png",
   "mcpServers": "./mcp_config.json"
 }

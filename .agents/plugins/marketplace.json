@@ -1,14 +1,14 @@
 {
-  "name": "hermes-grok-tools",
+  "name": "grok-cli-tools",
   "interface": {
-    "displayName": "Hermes Grok Tools"
+    "displayName": "Grok CLI Tools"
   },
   "plugins": [
     {
-      "name": "hermes-grok-tools",
+      "name": "grok-cli-tools",
       "source": {
         "source": "local",
-        "path": "./plugins/hermes-grok-tools"
+        "path": "./plugins/grok-cli-tools"
       },
       "policy": {
         "installation": "AVAILABLE",

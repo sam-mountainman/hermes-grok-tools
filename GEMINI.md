@@ -1,37 +1,21 @@
-# Hermes Grok Tools
+# Grok CLI Tools
 
-Use the `hermes-grok` MCP server when the user asks for Hermes Agent Grok OAuth X search, Grok image generation, or Grok video generation.
+Use the `grok-cli` MCP server when the user explicitly asks Grok or Grok 4.5 for an answer, research, implementation planning, or code review.
 
-Before generation-heavy work, call `hermes_grok_status` to confirm Hermes, provider configuration, and xAI OAuth credentials are available.
+Call `grok_status` for local setup/authentication checks. It does not call a model. Use the returned `session_id` for follow-up questions in the same Grok conversation. Do not invoke Grok for every ordinary question without a routing reason.
 
-When the user gives this repository URL and asks Gemini or Antigravity-compatible hosts to set it up, clone the repo and run:
-
-macOS / Linux:
-
-```bash
-./install.sh
-```
-
-Windows native PowerShell:
-
-```powershell
-.\install.ps1
-```
-
-If auto-detection fails, run:
+When the user asks Gemini or Antigravity to set up this repository, clone it and run:
 
 ```bash
 ./install.sh --target gemini
 ```
 
-Windows native:
+Windows native PowerShell:
 
 ```powershell
 .\install.ps1 -Target gemini
 ```
 
-OAuth is user-scoped through Hermes. The plugin never stores or ships user credentials.
+For Antigravity, use the `antigravity` target. The installer installs the official Grok CLI if needed, starts `grok login`, and installs only the requested extension/plugin.
 
-The installer sets default lower-cost Imagine models: `grok-imagine-image` for images and `grok-imagine-video` for videos. The plugin tools accept `quality`: `standard` keeps those defaults, while `quality` / `high` / `high_quality` selects `grok-imagine-image-quality` or `grok-imagine-video-1.5`. `grok-imagine-video-1.5` needs image/video input and should not be used for text-only video generation.
-
-Before calling image/video generation tools, ask only for missing settings that affect output or cost. Use structured question UI when Gemini or Antigravity supports it; otherwise ask a concise text fallback. Do not ask users to choose raw model IDs. Ask for quality and aspect ratio for images; quality, duration seconds, and aspect ratio for video generation; quality for video edit; quality and extension seconds for video extend. If the user already specified the settings or says to choose automatically, call the tool with `confirmed_settings: true` and sensible defaults.
+Grok runs read-only. `grok_research` uses Grok CLI Web research and is not a guaranteed dedicated X Search API. Image and video generation are not exposed by this plugin.

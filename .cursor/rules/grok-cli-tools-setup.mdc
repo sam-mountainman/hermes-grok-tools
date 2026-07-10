@@ -1,0 +1,25 @@
+---
+alwaysApply: true
+---
+
+# Grok CLI Tools Setup
+
+When the user gives this repository URL and asks Cursor to set it up, clone the repository and run:
+
+```bash
+./install.sh --target cursor
+```
+
+Windows native PowerShell:
+
+```powershell
+.\install.ps1 -Target cursor
+```
+
+The installer installs the official Grok CLI if needed, starts `grok login`, and installs this repository under `~/.cursor/plugins/local/grok-cli-tools`. It removes an old local `hermes-grok-tools` plugin during migration. It does not modify other AI agent hosts.
+
+For team distribution, import this GitHub repository in Cursor Dashboard > Settings > Plugins > Team Marketplaces.
+
+Use `grok_status` for setup checks. Use `grok_ask`, `grok_research`, `grok_plan`, or `grok_review` when the user explicitly requests Grok/Grok 4.5 or a Grok second opinion. Continue with `session_id`. Do not call Grok for every ordinary question.
+
+Grok runs read-only. This plugin does not claim dedicated X Search, image generation, or video generation through Grok CLI.

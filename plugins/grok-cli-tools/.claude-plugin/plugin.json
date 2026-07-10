@@ -1,0 +1,21 @@
+{
+  "name": "grok-cli-tools",
+  "version": "1.0.0",
+  "description": "Call Grok 4.5 from Claude Code through the official Grok CLI for questions, research, planning, and review.",
+  "author": {
+    "name": "sam-mountainman"
+  },
+  "homepage": "https://github.com/sam-mountainman/grok-cli-tools",
+  "repository": "https://github.com/sam-mountainman/grok-cli-tools",
+  "license": "MIT",
+  "keywords": [
+    "grok",
+    "grok-cli",
+    "grok-4.5",
+    "xai",
+    "mcp",
+    "claude-code"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

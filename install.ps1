@@ -1,21 +1,16 @@
 [CmdletBinding()]
 param(
     [ValidateSet("auto", "codex", "claude-code", "cursor", "antigravity", "gemini")]
-    [string]$Target = $(if ($env:HERMES_GROK_TARGET) { $env:HERMES_GROK_TARGET } else { "auto" }),
+    [string]$Target = $(if ($env:GROK_CLI_TOOLS_TARGET) { $env:GROK_CLI_TOOLS_TARGET } else { "auto" }),
     [switch]$NoAuth,
-    [switch]$NoHermesInstall,
-    [switch]$NoHermesConfig,
+    [switch]$NoGrokInstall,
     [switch]$NoPythonInstall,
-    [string]$HermesAgentPath = $env:HERMES_AGENT_PATH,
-    [string]$ServerName = $(if ($env:SERVER_NAME) { $env:SERVER_NAME } else { "hermes-grok" })
+    [string]$ServerName = $(if ($env:SERVER_NAME) { $env:SERVER_NAME } else { "grok-cli" })
 )
 
 $ErrorActionPreference = "Stop"
-
 $RootDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-if (-not $RootDir) {
-    $RootDir = (Get-Location).Path
-}
+if (-not $RootDir) { $RootDir = (Get-Location).Path }
 
 function Write-Step {
     param([string]$Message)
@@ -25,9 +20,7 @@ function Write-Step {
 function Get-CommandPath {
     param([string]$Name)
     $cmd = Get-Command $Name -ErrorAction SilentlyContinue
-    if ($cmd) {
-        return $cmd.Source
-    }
+    if ($cmd) { return $cmd.Source }
     return $null
 }
 
@@ -38,10 +31,7 @@ function Invoke-Tool {
         [switch]$IgnoreErrors
     )
     & $File @Arguments
-    $code = $LASTEXITCODE
-    if ($null -eq $code) {
-        $code = 0
-    }
+    $code = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
     if (($code -ne 0) -and (-not $IgnoreErrors)) {
         throw "$File failed with exit code $code"
     }
@@ -52,15 +42,12 @@ function Add-UserPath {
     if (-not (Test-Path $PathToAdd)) {
         New-Item -ItemType Directory -Force -Path $PathToAdd | Out-Null
     }
-
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    $parts = @()
-    if ($userPath) {
-        $parts = $userPath -split ";"
-    }
+    $parts = if ($userPath) { $userPath -split ";" } else { @() }
+    $trimChars = [char[]]@('\', '/')
     $alreadyPresent = $false
     foreach ($part in $parts) {
-        if ($part.TrimEnd("\") -ieq $PathToAdd.TrimEnd("\")) {
+        if ($part.TrimEnd($trimChars) -ieq $PathToAdd.TrimEnd($trimChars)) {
             $alreadyPresent = $true
             break
         }
@@ -74,77 +61,52 @@ function Add-UserPath {
     }
 }
 
-function Add-HermesPaths {
-    $paths = @(
-        (Join-Path $env:LOCALAPPDATA "hermes\hermes-agent\venv\Scripts"),
-        (Join-Path $env:LOCALAPPDATA "hermes\bin"),
-        (Join-Path $env:LOCALAPPDATA "hermes")
-    )
-    foreach ($path in $paths) {
-        if (Test-Path $path) {
-            Add-UserPath $path
-        }
+function Ensure-Grok {
+    $grokBinDir = Join-Path $env:USERPROFILE ".grok\bin"
+    Add-UserPath $grokBinDir
+    $grok = Get-CommandPath "grok"
+    if (-not $grok) {
+        $candidate = Join-Path $grokBinDir "grok.exe"
+        if (Test-Path $candidate) { $grok = $candidate }
     }
-}
-
-function Get-HermesCommand {
-    $cmd = Get-CommandPath "hermes"
-    if ($cmd) {
-        return $cmd
-    }
-    $candidate = Join-Path $env:LOCALAPPDATA "hermes\hermes-agent\venv\Scripts\hermes.exe"
-    if (Test-Path $candidate) {
-        return $candidate
-    }
-    return $null
-}
-
-function Ensure-Hermes {
-    Add-HermesPaths
-    $hermes = Get-HermesCommand
-    if ($hermes) {
-        return $hermes
+    if ($grok) { return $grok }
+    if ($NoGrokInstall) {
+        throw "Grok CLI was not found. Install it from https://x.ai/cli or rerun without -NoGrokInstall."
     }
 
-    if ($NoHermesInstall) {
-        throw "Hermes CLI was not found. Install Hermes Agent first, or rerun without -NoHermesInstall."
-    }
-
-    Write-Step "Hermes CLI not found. Installing Hermes Agent for native Windows..."
-    $script = Invoke-RestMethod "https://hermes-agent.nousresearch.com/install.ps1"
+    Write-Step "Grok CLI not found. Installing the official native Windows Grok CLI..."
+    $script = Invoke-RestMethod "https://x.ai/cli/install.ps1"
     & ([ScriptBlock]::Create($script))
-    Add-HermesPaths
-    $hermes = Get-HermesCommand
-    if (-not $hermes) {
-        throw "Hermes installer completed, but hermes.exe was not found. Open a new PowerShell window and rerun .\install.ps1."
+    Add-UserPath $grokBinDir
+    $grok = Get-CommandPath "grok"
+    if (-not $grok) {
+        $candidate = Join-Path $grokBinDir "grok.exe"
+        if (Test-Path $candidate) { $grok = $candidate }
     }
-    return $hermes
+    if (-not $grok) {
+        throw "The Grok installer completed, but grok.exe was not found. Open a new PowerShell window and rerun .\install.ps1."
+    }
+    return $grok
 }
 
 function Test-PythonInvocation {
-    param(
-        [string]$File,
-        [string[]]$Arguments
-    )
+    param([string]$File, [string[]]$Arguments)
     try {
         & $File @Arguments *> $null
-        $code = $LASTEXITCODE
-        return ($code -eq 0)
+        return ($LASTEXITCODE -eq 0)
     } catch {
         return $false
     }
 }
 
 function Ensure-Python3Shim {
-    $binDir = Join-Path $env:LOCALAPPDATA "hermes-grok-tools\bin"
+    $binDir = Join-Path $env:LOCALAPPDATA "grok-cli-tools\bin"
     New-Item -ItemType Directory -Force -Path $binDir | Out-Null
     $shim = Join-Path $binDir "python3.cmd"
-
-    $hasHermesPython = Test-Path (Join-Path $env:LOCALAPPDATA "hermes\hermes-agent\venv\Scripts\python.exe")
     $hasPyLauncher = (Get-CommandPath "py") -and (Test-PythonInvocation "py" @("-3", "-c", "import sys; raise SystemExit(0 if sys.version_info[0] == 3 else 1)"))
     $hasPython = (Get-CommandPath "python") -and (Test-PythonInvocation "python" @("-c", "import sys; raise SystemExit(0 if sys.version_info[0] == 3 else 1)"))
 
-    if ((-not $hasHermesPython) -and (-not $hasPyLauncher) -and (-not $hasPython)) {
+    if ((-not $hasPyLauncher) -and (-not $hasPython)) {
         if ($NoPythonInstall) {
             throw "Python 3 was not found. Install Python 3 or rerun without -NoPythonInstall."
         }
@@ -159,11 +121,6 @@ function Ensure-Python3Shim {
     $cmd = @'
 @echo off
 setlocal
-set "HERMES_PY=%LOCALAPPDATA%\hermes\hermes-agent\venv\Scripts\python.exe"
-if exist "%HERMES_PY%" (
-  "%HERMES_PY%" %*
-  exit /b %ERRORLEVEL%
-)
 where py >nul 2>nul
 if %ERRORLEVEL%==0 (
   py -3 %*
@@ -174,7 +131,7 @@ if %ERRORLEVEL%==0 (
   python %*
   exit /b %ERRORLEVEL%
 )
-echo Python 3 was not found. Re-run install.ps1 or install Hermes Agent.
+echo Python 3 was not found. Re-run install.ps1 or install Python 3.
 exit /b 1
 '@
     Set-Content -Path $shim -Value $cmd -Encoding ASCII
@@ -184,9 +141,7 @@ exit /b 1
 
 function Copy-Tree {
     param([string]$Source, [string]$Destination)
-    if (Test-Path $Destination) {
-        Remove-Item -Recurse -Force $Destination
-    }
+    if (Test-Path $Destination) { Remove-Item -Recurse -Force $Destination }
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Destination) | Out-Null
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
     Get-ChildItem -LiteralPath $Source -Force | ForEach-Object {
@@ -201,9 +156,7 @@ function Get-ParentCommandLineTarget {
         $pidToCheck = $PID
         while ($pidToCheck -and ($pidToCheck -ne 0)) {
             $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$pidToCheck" -ErrorAction SilentlyContinue
-            if (-not $proc) {
-                break
-            }
+            if (-not $proc) { break }
             $line = [string]$proc.CommandLine
             if ($line -match "(?i)codex") { return "codex" }
             if ($line -match "(?i)claude") { return "claude-code" }
@@ -211,30 +164,20 @@ function Get-ParentCommandLineTarget {
             if ($line -match "(?i)antigravity|agy") { return "antigravity" }
             if ($line -match "(?i)gemini") { return "gemini" }
             $pidToCheck = $proc.ParentProcessId
-            if ($pidToCheck -eq 1) {
-                break
-            }
         }
-    } catch {
-        return $null
-    }
+    } catch { return $null }
     return $null
 }
 
 function Resolve-Target {
-    if ($Target -ne "auto") {
-        return $Target
-    }
+    if ($Target -ne "auto") { return $Target }
     if ($env:CODEX_SHELL -or $env:CODEX_THREAD_ID -or $env:CODEX_HOME) { return "codex" }
     if ($env:CLAUDECODE -or $env:CLAUDE_CODE -or $env:CLAUDE_CONFIG_DIR) { return "claude-code" }
     if ($env:CURSOR_TRACE_ID -or $env:CURSOR_AGENT -or ($env:TERM_PROGRAM -eq "Cursor")) { return "cursor" }
     if ($env:ANTIGRAVITY_HOME -or $env:AGY_HOME) { return "antigravity" }
     if ($env:GEMINI_API_KEY -or $env:GEMINI_CLI) { return "gemini" }
-
     $fromProcess = Get-ParentCommandLineTarget
-    if ($fromProcess) {
-        return $fromProcess
-    }
+    if ($fromProcess) { return $fromProcess }
 
     $available = @()
     if (Get-CommandPath "codex") { $available += "codex" }
@@ -242,32 +185,16 @@ function Resolve-Target {
     if (Get-CommandPath "cursor") { $available += "cursor" }
     if (Get-CommandPath "agy") { $available += "antigravity" }
     if (Get-CommandPath "gemini") { $available += "gemini" }
-    if ($available.Count -eq 1) {
-        return $available[0]
-    }
+    if ($available.Count -eq 1) { return $available[0] }
     throw "Could not auto-detect target. Rerun with -Target codex, claude-code, cursor, antigravity, or gemini."
 }
 
-$hermes = Ensure-Hermes
+$grok = Ensure-Grok
 $pythonShim = Ensure-Python3Shim
 
-if (-not $NoHermesConfig) {
-    Write-Step "Configuring Hermes xAI/Grok backends..."
-    Invoke-Tool $hermes @("plugins", "enable", "image_gen/xai", "--no-allow-tool-override") -IgnoreErrors
-    Invoke-Tool $hermes @("plugins", "enable", "video_gen/xai", "--no-allow-tool-override") -IgnoreErrors
-    Invoke-Tool $hermes @("config", "set", "image_gen.provider", "xai")
-    Invoke-Tool $hermes @("config", "set", "video_gen.provider", "xai")
-    Invoke-Tool $hermes @("config", "set", "image_gen.model", "grok-imagine-image") -IgnoreErrors
-    Invoke-Tool $hermes @("config", "set", "video_gen.model", "grok-imagine-video") -IgnoreErrors
-}
-
 if (-not $NoAuth) {
-    Write-Step "Starting Hermes xAI Grok OAuth. Browser/device login may require user action."
-    Invoke-Tool $hermes @("auth", "add", "xai-oauth") -IgnoreErrors
-}
-
-if ($HermesAgentPath) {
-    Write-Host "Note: plugin manifests stay portable; set HERMES_AGENT_PATH in the host environment if this checkout hint is required."
+    Write-Step "Starting Grok browser login. Complete the browser or device-code flow if prompted."
+    Invoke-Tool $grok @("login") -IgnoreErrors
 }
 
 $resolvedTarget = Resolve-Target
@@ -278,52 +205,56 @@ switch ($resolvedTarget) {
         $codex = Get-CommandPath "codex"
         if (-not $codex) { throw "codex was not found on PATH." }
         Invoke-Tool $codex @("mcp", "remove", $ServerName) -IgnoreErrors
+        Invoke-Tool $codex @("mcp", "remove", "hermes-grok") -IgnoreErrors
+        Invoke-Tool $codex @("plugin", "remove", "hermes-grok-tools") -IgnoreErrors
         Invoke-Tool $codex @("plugin", "marketplace", "remove", "hermes-grok-tools") -IgnoreErrors
+        Invoke-Tool $codex @("plugin", "marketplace", "remove", "grok-cli-tools") -IgnoreErrors
         Invoke-Tool $codex @("plugin", "marketplace", "add", $RootDir)
-        Invoke-Tool $codex @("plugin", "add", "hermes-grok-tools@hermes-grok-tools")
+        Invoke-Tool $codex @("plugin", "add", "grok-cli-tools@grok-cli-tools")
     }
     "claude-code" {
         $claude = Get-CommandPath "claude"
         if (-not $claude) { throw "claude was not found on PATH." }
         Invoke-Tool $claude @("mcp", "remove", $ServerName) -IgnoreErrors
+        Invoke-Tool $claude @("mcp", "remove", "hermes-grok") -IgnoreErrors
         Invoke-Tool $claude @("plugin", "uninstall", "hermes-grok-tools") -IgnoreErrors
+        Invoke-Tool $claude @("plugin", "uninstall", "grok-cli-tools") -IgnoreErrors
         Invoke-Tool $claude @("plugin", "marketplace", "remove", "hermes-grok-tools") -IgnoreErrors
+        Invoke-Tool $claude @("plugin", "marketplace", "remove", "grok-cli-tools") -IgnoreErrors
         Invoke-Tool $claude @("plugin", "marketplace", "add", $RootDir)
-        Invoke-Tool $claude @("plugin", "install", "hermes-grok-tools@hermes-grok-tools", "--scope", "user")
+        Invoke-Tool $claude @("plugin", "install", "grok-cli-tools@grok-cli-tools", "--scope", "user")
     }
     "cursor" {
-        $cursorPluginDir = if ($env:CURSOR_PLUGIN_DIR) {
-            $env:CURSOR_PLUGIN_DIR
-        } else {
-            Join-Path $env:USERPROFILE ".cursor\plugins\local\hermes-grok-tools"
-        }
-        Copy-Tree (Join-Path $RootDir "plugins\hermes-grok-tools") $cursorPluginDir
-        Write-Host "Installed hermes-grok-tools as a local Cursor plugin at $cursorPluginDir."
-        Write-Host "For team distribution, import this GitHub repo in Cursor Dashboard > Settings > Plugins > Team Marketplaces."
-        Write-Host "Direct cursor --add-mcp fallback was intentionally not used."
+        $oldDir = Join-Path $env:USERPROFILE ".cursor\plugins\local\hermes-grok-tools"
+        if (Test-Path $oldDir) { Remove-Item -Recurse -Force $oldDir }
+        $cursorPluginDir = if ($env:CURSOR_PLUGIN_DIR) { $env:CURSOR_PLUGIN_DIR } else { Join-Path $env:USERPROFILE ".cursor\plugins\local\grok-cli-tools" }
+        Copy-Tree (Join-Path $RootDir "plugins\grok-cli-tools") $cursorPluginDir
+        Write-Host "Installed grok-cli-tools as a local Cursor plugin at $cursorPluginDir."
     }
     "antigravity" {
         $agy = Get-CommandPath "agy"
         if ($agy) {
-            $agyPluginDir = Join-Path $env:USERPROFILE ".gemini\antigravity-cli\plugins\hermes-grok-tools"
+            $oldDir = Join-Path $env:USERPROFILE ".gemini\antigravity-cli\plugins\hermes-grok-tools"
+            if (Test-Path $oldDir) { Remove-Item -Recurse -Force $oldDir }
+            $agyPluginDir = Join-Path $env:USERPROFILE ".gemini\antigravity-cli\plugins\grok-cli-tools"
             Copy-Tree $RootDir $agyPluginDir
-            Write-Host "Installed hermes-grok-tools as an Antigravity CLI plugin at $agyPluginDir."
         } else {
             $gemini = Get-CommandPath "gemini"
-            if (-not $gemini) { throw "Neither agy nor gemini was found on PATH. Install Antigravity CLI or Gemini CLI first." }
+            if (-not $gemini) { throw "Neither agy nor gemini was found on PATH." }
             Invoke-Tool $gemini @("extensions", "uninstall", "hermes-grok-tools") -IgnoreErrors
+            Invoke-Tool $gemini @("extensions", "uninstall", "grok-cli-tools") -IgnoreErrors
             Invoke-Tool $gemini @("extensions", "install", $RootDir, "--consent")
-            Write-Host "Installed hermes-grok-tools as a Gemini/Antigravity-compatible extension."
         }
     }
     "gemini" {
         $gemini = Get-CommandPath "gemini"
         if (-not $gemini) { throw "gemini was not found on PATH." }
         Invoke-Tool $gemini @("extensions", "uninstall", "hermes-grok-tools") -IgnoreErrors
+        Invoke-Tool $gemini @("extensions", "uninstall", "grok-cli-tools") -IgnoreErrors
         Invoke-Tool $gemini @("extensions", "install", $RootDir, "--consent")
     }
 }
 
 Write-Host "Target handled: $resolvedTarget."
-Write-Host "Restart $resolvedTarget so it picks up User PATH changes, then call hermes_grok_status from the plugin MCP tools."
+Write-Host "Restart $resolvedTarget, then call grok_status from the plugin MCP tools."
 Write-Host "Python shim for MCP hosts: $pythonShim"
