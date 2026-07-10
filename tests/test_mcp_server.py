@@ -36,7 +36,7 @@ def test_initialize_response_shape():
     )
     assert response["id"] == 1
     assert response["result"]["serverInfo"]["name"] == "grok-cli"
-    assert response["result"]["serverInfo"]["version"] == "1.1.0"
+    assert response["result"]["serverInfo"]["version"] == "1.1.1"
     assert "tools" in response["result"]["capabilities"]
 
 
@@ -47,6 +47,26 @@ def test_tools_list_response_is_json_serializable():
     encoded = json.dumps(response)
     assert "grok_ask" in encoded
     assert "grok_review" in encoded
+
+
+def test_tool_call_content_is_exact_answer_while_metadata_stays_structured(monkeypatch):
+    exact = "  Exact Grok answer\n\n```python\nprint('same')\n```  "
+    monkeypatch.setitem(
+        grok_cli_mcp.TOOLS["grok_ask"],
+        "handler",
+        lambda _: {"ok": True, "answer": exact, "session_id": "session-1"},
+    )
+    response = grok_cli_mcp._handle_request(
+        {
+            "jsonrpc": "2.0",
+            "id": 20,
+            "method": "tools/call",
+            "params": {"name": "grok_ask", "arguments": {"question": "Hello"}},
+        }
+    )
+
+    assert response["result"]["content"][0]["text"] == exact
+    assert response["result"]["structuredContent"]["session_id"] == "session-1"
 
 
 def test_build_command_uses_grok_45_and_read_only_flags(tmp_path: Path):
@@ -88,6 +108,25 @@ def test_extract_answer_and_session_from_nested_payload():
     }
     assert grok_cli_mcp._extract_answer(payload) == "Grok answer"
     assert grok_cli_mcp._extract_session_id(payload) == "nested-session"
+
+
+def test_extract_answer_preserves_exact_text_and_content_boundaries():
+    payload = {
+        "response": {
+            "content": [
+                {"type": "text", "text": "  First line\n"},
+                {"type": "text", "text": "Second line  "},
+            ]
+        }
+    }
+    assert grok_cli_mcp._extract_answer(payload) == "  First line\nSecond line  "
+
+
+def test_tool_descriptions_require_verbatim_relay():
+    for name in ("grok_ask", "grok_research", "grok_plan", "grok_review"):
+        description = grok_cli_mcp.TOOLS[name]["description"]
+        assert "verbatim" in description
+        assert "without summarizing" in description or "do not summarize" in description
 
 
 def test_run_grok_returns_answer_without_real_cli(monkeypatch, tmp_path: Path):
