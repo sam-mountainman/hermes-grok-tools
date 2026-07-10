@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 SERVER_NAME = "grok-cli"
-SERVER_VERSION = "1.1.0"
+SERVER_VERSION = "1.1.1"
 DEFAULT_MODEL = os.environ.get("GROK_CLI_MODEL", "grok-4.5")
 DEFAULT_EFFORT = os.environ.get("GROK_CLI_EFFORT", "high").strip().lower() or "high"
 DEFAULT_TIMEOUT_SECONDS = 900
@@ -204,12 +204,12 @@ def _parse_json_output(raw: str) -> Any:
 
 def _text_from_content(value: Any) -> str | None:
     if isinstance(value, str) and value.strip():
-        return value.strip()
+        return value
     if isinstance(value, list):
         parts: list[str] = []
         for item in value:
             if isinstance(item, str) and item.strip():
-                parts.append(item.strip())
+                parts.append(item)
             elif isinstance(item, dict):
                 for key in ("text", "content", "message"):
                     text = _text_from_content(item.get(key))
@@ -217,7 +217,7 @@ def _text_from_content(value: Any) -> str | None:
                         parts.append(text)
                         break
         if parts:
-            return "\n".join(parts)
+            return "".join(parts)
     return None
 
 
@@ -634,22 +634,22 @@ TOOLS: dict[str, dict[str, Any]] = {
         "handler": tool_status,
     },
     "grok_ask": {
-        "description": "Ask Grok 4.5 a normal question or request a second opinion through the locally authenticated Grok CLI. Use when the user explicitly asks Grok/Grok 4.5, asks for a Grok second opinion, or requests an external Grok consultation. Read-only; supports session continuation.",
+        "description": "Ask Grok 4.5 a normal question or request a second opinion through the locally authenticated Grok CLI. The answer field preserves Grok's wording for verbatim relay: do not summarize, paraphrase, translate, or truncate it. Read-only; supports session continuation.",
         "inputSchema": _schema("question", "The complete question to ask Grok."),
         "handler": tool_ask,
     },
     "grok_research": {
-        "description": "Delegate current-information and web research to Grok 4.5 through Grok CLI, requesting primary-source links. Use when the user explicitly asks Grok to research or wants Grok's web-search perspective. This is not a guaranteed dedicated X Search API.",
+        "description": "Delegate current-information and web research to Grok 4.5 through Grok CLI, requesting primary-source links. Relay the answer field verbatim without summarizing, paraphrasing, translating, or truncating it. This is not a guaranteed dedicated X Search API.",
         "inputSchema": _schema("query", "The research question."),
         "handler": tool_research,
     },
     "grok_plan": {
-        "description": "Ask Grok 4.5 to inspect a project read-only and produce an implementation plan. Use when the user asks Grok to plan or architect a change.",
+        "description": "Ask Grok 4.5 to inspect a project read-only and produce an implementation plan. Relay the answer field verbatim without summarizing, paraphrasing, translating, or truncating it.",
         "inputSchema": _schema("task", "The complete implementation or architecture task."),
         "handler": tool_plan,
     },
     "grok_review": {
-        "description": "Ask Grok 4.5 to review a repository and current git diff read-only. Use when the user asks Grok for code review or a second review opinion.",
+        "description": "Ask Grok 4.5 to review a repository and current git diff read-only. Relay the answer field verbatim without summarizing, paraphrasing, translating, or truncating it.",
         "inputSchema": _schema("instructions", "Review scope or special concerns."),
         "handler": tool_review,
     },
@@ -749,6 +749,12 @@ def _response(message_id: Any, result: Any = None, error: Any = None) -> dict[st
     return payload
 
 
+def _tool_content_text(result: Any) -> str:
+    if isinstance(result, dict) and isinstance(result.get("answer"), str):
+        return result["answer"]
+    return json.dumps(result, ensure_ascii=False, indent=2)
+
+
 def _handle_request(message: dict[str, Any]) -> dict[str, Any] | None:
     method = message.get("method")
     message_id = message.get("id")
@@ -784,7 +790,7 @@ def _handle_request(message: dict[str, Any]) -> dict[str, Any] | None:
                     "content": [
                         {
                             "type": "text",
-                            "text": json.dumps(result, ensure_ascii=False, indent=2),
+                            "text": _tool_content_text(result),
                         }
                     ],
                     "structuredContent": result,

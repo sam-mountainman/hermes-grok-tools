@@ -10,7 +10,7 @@
     {
       "name": "grok-cli-tools",
       "source": "plugins/grok-cli-tools",
-      "description": "Grok 4.5 questions, research, planning, review, and user-confirmed Grok Imagine media generation through Grok CLI."
+      "description": "Verbatim Grok 4.5 answers, research, planning, review, and user-confirmed Grok Imagine media generation through Grok CLI."
     }
   ]
 }

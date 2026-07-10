@@ -42,6 +42,8 @@ After setup:
 
 Grok 4.5 uses `high` reasoning effort by default. Only `low`, `medium`, and `high` are valid; map deep/max requests to `high`.
 
+Relay the `answer` returned by `grok_ask`, `grok_research`, `grok_plan`, and `grok_review` verbatim. Do not summarize, paraphrase, translate, reorder, correct, or silently truncate it. Preserve Markdown, code blocks, links, language, and line breaks. The user-facing reply should contain only Grok's answer by default. Put unavoidable host commentary after the complete answer under a separate `Host agent note` heading. For media tools, preserve returned file paths and URLs exactly.
+
 Before image or video generation, use the host's structured AskUserQuestion/request_user_input UI to confirm missing settings. For images confirm quality/model, 1K/2K resolution, and aspect ratio. For videos confirm model/quality and resolution, 1-15 second duration, and aspect ratio. Do not repeat settings already supplied; if the user delegates them, choose sensible defaults. Pass `confirmed_settings: true` only after the user supplies, approves, or delegates every setting. `grok-imagine-video-1.5` and 1080p require a source image.
 
 The repository inspection path stays read-only. Media tools may create generated output files through Grok Build's bundled Imagine tools. Do not weaken the bridge's `dontAsk`, `Edit(*)`, or `MCPTool(*)` restrictions. `grok_research` is Web research, not a guaranteed dedicated X Search API.

@@ -13,7 +13,15 @@ Use the `grok-cli` MCP tools:
 - Call `grok_generate_image` for Grok Imagine image generation or editing.
 - Call `grok_generate_video` for Grok Imagine text-to-video or image-to-video generation.
 
-Pass the project root as `cwd` for repository-aware requests. The default reasoning effort is `high`. Use `low` only when the user asks for a quick answer and `medium` when they explicitly prefer a speed/quality balance. Grok 4.5 does not accept `xhigh` or `max`; interpret deep/max requests as `high`. Return Grok's answer clearly as Grok's output; add host-agent commentary separately.
+Pass the project root as `cwd` for repository-aware requests. The default reasoning effort is `high`. Use `low` only when the user asks for a quick answer and `medium` when they explicitly prefer a speed/quality balance. Grok 4.5 does not accept `xhigh` or `max`; interpret deep/max requests as `high`.
+
+## Verbatim relay
+
+For `grok_ask`, `grok_research`, `grok_plan`, and `grok_review`, return the MCP result's `answer` text verbatim as Grok's response. Do not summarize, paraphrase, rewrite, translate, reorder, correct, or silently truncate it. Preserve its language, wording, Markdown, headings, lists, code fences, links, and line breaks. Do not merge the host agent's own prose into Grok's text.
+
+By default, the user-facing reply should contain only Grok's exact `answer`. If host-agent commentary is necessary, place it after the complete Grok answer under a clearly separate `Host agent note` heading. Never put commentary before, inside, or in place of Grok's answer. If a host output limit prevents full relay, say that explicitly instead of pretending a shortened response is verbatim.
+
+For media tools, relay the returned generated file path or URL exactly. The host may render or link the media after presenting that exact value, but must not replace it with an invented path or rewritten URL.
 
 ## Media confirmation
 

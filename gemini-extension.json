@@ -1,7 +1,7 @@
 {
   "name": "grok-cli-tools",
-  "version": "1.1.0",
-  "description": "Call Grok 4.5 at high reasoning effort and generate user-confirmed Grok Imagine media through the official Grok CLI.",
+  "version": "1.1.1",
+  "description": "Relay Grok 4.5 answers verbatim at high reasoning effort and generate user-confirmed Grok Imagine media through the official Grok CLI.",
   "icon": "plugins/grok-cli-tools/assets/x-logo-black.png",
   "mcpServers": {
     "grok-cli": {

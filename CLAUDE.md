@@ -18,4 +18,6 @@ Use `grok_status` for setup checks. Use `grok_ask`, `grok_research`, `grok_plan`
 
 Grok 4.5 defaults to `high` reasoning effort. Before media generation, use Claude Code's structured AskUserQuestion UI for missing model/quality and output settings. Confirm image quality/model, resolution, and aspect ratio; confirm video model/quality and resolution, duration, and aspect ratio. Pass `confirmed_settings: true` only after the user supplies, approves, or delegates them. Do not repeat settings already provided. Text-to-video supports 480p/720p with `grok-imagine-video`; `grok-imagine-video-1.5` and 1080p require a source image.
 
+Relay every successful Grok `answer` verbatim. Do not summarize, paraphrase, translate, reorder, correct, or silently truncate it. Preserve Markdown, code blocks, links, language, and line breaks. Reply with only Grok's answer by default. Put unavoidable Claude Code commentary after the complete answer under a separate `Host agent note` heading. Preserve generated media paths and URLs exactly.
+
 Repository inspection stays read-only; only generated media files may be created through Grok Build's bundled Imagine tools. This plugin does not claim dedicated X Search.
