@@ -1,35 +1,19 @@
-# Hermes Grok Tools Setup
+# Grok CLI Tools Setup
 
-If the user gives this repository URL and asks Claude Code to set it up, clone the repo and run:
-
-macOS / Linux:
-
-```bash
-./install.sh
-```
-
-Windows native PowerShell:
-
-```powershell
-.\install.ps1
-```
-
-The installer detects Claude Code and installs `hermes-grok-tools` through the Claude Code plugin marketplace. It removes old direct `claude mcp add hermes-grok` registrations if present.
-
-If auto-detection fails, run:
+When the user gives this repository URL and asks Claude Code to set it up, clone the repository and run:
 
 ```bash
 ./install.sh --target claude-code
 ```
 
-Windows native:
+Windows native PowerShell:
 
 ```powershell
 .\install.ps1 -Target claude-code
 ```
 
-OAuth is user-scoped through Hermes. The plugin never stores or ships user credentials.
+The installer installs the official Grok CLI if needed, starts `grok login`, and installs only the Claude Code plugin. It removes an old `hermes-grok-tools` registration during migration and does not modify Codex, Cursor, Antigravity, or Gemini settings.
 
-The installer sets default lower-cost Imagine models: `grok-imagine-image` for images and `grok-imagine-video` for videos. The plugin tools accept `quality`: `standard` keeps those defaults, while `quality` / `high` / `high_quality` selects `grok-imagine-image-quality` or `grok-imagine-video-1.5`. `grok-imagine-video-1.5` needs image/video input and should not be used for text-only video generation.
+Use `grok_status` for setup checks. Use `grok_ask`, `grok_research`, `grok_plan`, or `grok_review` when the user explicitly requests Grok/Grok 4.5 or a Grok second opinion. Continue a conversation with the returned `session_id`. Do not call Grok automatically for every ordinary question.
 
-Before calling image/video generation tools, ask only for missing settings that affect output or cost. Use structured AskUserQuestion UI when Claude Code supports it; otherwise ask a concise text fallback. Do not ask users to choose raw model IDs. Ask for quality and aspect ratio for images; quality, duration seconds, and aspect ratio for video generation; quality for video edit; quality and extension seconds for video extend. If the user already specified the settings or says to choose automatically, call the tool with `confirmed_settings: true` and sensible defaults.
+Grok runs read-only. This plugin provides general questions, Web research, planning, and review; it does not claim dedicated X Search, image generation, or video generation through Grok CLI.

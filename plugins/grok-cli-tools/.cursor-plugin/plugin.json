@@ -1,0 +1,25 @@
+{
+  "name": "grok-cli-tools",
+  "displayName": "Grok CLI Tools",
+  "version": "1.0.0",
+  "description": "Call Grok 4.5 from Cursor through the official Grok CLI for questions, research, planning, and review.",
+  "author": {
+    "name": "sam-mountainman"
+  },
+  "license": "MIT",
+  "keywords": [
+    "grok",
+    "grok-cli",
+    "grok-4.5",
+    "xai",
+    "mcp",
+    "cursor"
+  ],
+  "category": "Developer Tools",
+  "tags": [
+    "mcp",
+    "xai",
+    "grok"
+  ],
+  "icon": "./assets/x-logo-black.png"
+}

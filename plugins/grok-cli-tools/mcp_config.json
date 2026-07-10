@@ -3,7 +3,7 @@
     "grok-cli": {
       "command": "python3",
       "args": [
-        "./plugins/grok-cli-tools/scripts/grok_cli_mcp.py"
+        "./scripts/grok_cli_mcp.py"
       ],
       "cwd": ".",
       "env": {

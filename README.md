@@ -1,18 +1,18 @@
-# Hermes Grok Tools
+# Grok CLI Tools
 
-Hermes Agent の Grok OAuth 系ツールを、Codex / Claude Code / Cursor / Antigravity / Gemini から plugin として配布するための marketplace repo です。
+Codex / Claude Code / Cursor / Antigravity / Gemini から、公式 Grok CLI を通じて Grok 4.5 に質問・調査・設計・レビューを依頼するための plugin marketplace repository です。
 
-目的は「セットアップした AI エージェントだけ」に、そのエージェントの plugin / extension として入れることです。MCP 直登録は過去互換の補助に留め、通常の installer では使いません。
+ホスト AI が実装や会話を担当し、必要な場面だけ Grok 4.5 を外部ブレーンとして呼びます。Grok は読み取り専用で起動し、ファイル編集や外部 MCP 呼び出しを許可しません。
 
 ## AI エージェントに頼むだけのセットアップ
 
-ユーザーはこの GitHub URL を AI エージェントに貼って、`セットアップして` と依頼してください。
+使いたい AI エージェントへ次の一文を送ってください。
 
 ```text
-https://github.com/sam-mountainman/hermes-grok-tools
+https://github.com/sam-mountainman/grok-cli-tools をセットアップして。
 ```
 
-エージェント側は repo を clone して、repo 直下でこれを実行します。
+依頼を受けた AI エージェントは repository を clone し、自分自身のホストだけをセットアップします。
 
 macOS / Linux:
 
@@ -26,7 +26,9 @@ Windows native PowerShell:
 .\install.ps1
 ```
 
-`install.sh` は Codex / Claude Code / Cursor / Antigravity / Gemini を自動判定します。判定できない環境では、エージェントが明示 target を指定します。
+installer は公式 Grok CLI がなければインストールし、`grok login` を開始します。初回のブラウザまたは device-code 認証だけはユーザー操作が必要です。その後、Codex / Claude Code / Cursor / Antigravity / Gemini のうち、依頼元に対応する plugin / extension だけを登録します。
+
+自動判定できない場合:
 
 ```bash
 ./install.sh --target codex
@@ -36,7 +38,7 @@ Windows native PowerShell:
 ./install.sh --target gemini
 ```
 
-Windows native では `install.ps1` が同じ target を受け取ります。
+Windows native:
 
 ```powershell
 .\install.ps1 -Target codex
@@ -46,171 +48,108 @@ Windows native では `install.ps1` が同じ target を受け取ります。
 .\install.ps1 -Target gemini
 ```
 
-`install.ps1` は WSL を使いません。Hermes Agent の Windows native installer を使い、必要に応じて `%LOCALAPPDATA%\hermes-grok-tools\bin\python3.cmd` を作って、plugin の MCP server が Windows 上でも `python3` で起動できるようにします。
+## 提供ツール
 
-## 各ホストの入れ方
+| Tool | 用途 |
+|---|---|
+| `grok_status` | Grok CLI、認証の存在、既定モデルをローカル確認。モデル利用なし |
+| `grok_ask` | Grok 4.5 に普通の質問、相談、セカンドオピニオンを依頼 |
+| `grok_research` | Grok CLI の Web 検索を使った現在情報の調査と出典収集 |
+| `grok_plan` | repository を読み取り専用で調べ、実装計画を作成 |
+| `grok_review` | repository と `git diff` を読み取り専用でレビュー |
+
+`grok_ask` などは `session_id` を返します。続きの質問で同じ `session_id` を渡すと、同じ Grok セッションを再開できます。既定モデルは `grok-4.5` で、必要な場合だけ `model` を上書きできます。
+
+利用例:
+
+```text
+Grok 4.5にこの質問を聞いて。
+Grokにもこの設計のセカンドオピニオンを出させて。
+Grokで最新情報を調べて、出典も付けて。
+Grokにこの変更をレビューさせて。
+```
+
+プラグイン同梱の `consult-grok` skill は、ユーザーが Grok / Grok 4.5 を明示した場合に適切な tool へルーティングします。全ての普通の質問で勝手に呼び出して利用枠を消費する設計にはしていません。
+
+## 認証
+
+通常は installer 中にブラウザログインが始まります。
+
+```bash
+grok login
+```
+
+ブラウザを使えない環境:
+
+```bash
+grok login --device-auth
+```
+
+CI や従量課金の API key を使う環境では `XAI_API_KEY` も利用できます。plugin は token や `~/.grok/auth.json` の内容を読み取らず、公式 Grok CLI に認証を任せます。
+
+## 各ホストへの登録
 
 ### Codex
 
 ```bash
-codex plugin marketplace add https://github.com/sam-mountainman/hermes-grok-tools
-codex plugin add hermes-grok-tools@hermes-grok-tools
+codex plugin marketplace add https://github.com/sam-mountainman/grok-cli-tools
+codex plugin add grok-cli-tools@grok-cli-tools
 ```
-
-`./install.sh --target codex` もこの flow を使います。`codex mcp add` ではありません。
-Windows native では `.\install.ps1 -Target codex` を使います。
 
 ### Claude Code
 
 ```bash
-claude plugin marketplace add https://github.com/sam-mountainman/hermes-grok-tools
-claude plugin install hermes-grok-tools@hermes-grok-tools --scope user
+claude plugin marketplace add https://github.com/sam-mountainman/grok-cli-tools
+claude plugin install grok-cli-tools@grok-cli-tools --scope user
 ```
-
-`./install.sh --target claude-code` も `claude plugin marketplace add` + `claude plugin install` を使います。古い `claude mcp add hermes-grok` があれば削除します。
-Windows native では `.\install.ps1 -Target claude-code` を使います。
 
 ### Cursor
 
-Cursor 用には `.cursor-plugin/marketplace.json` と `plugins/hermes-grok-tools/.cursor-plugin/plugin.json`、plugin root の `mcp.json` を同梱しています。
-
-Cursor には plugin / Marketplace があります。Cursor の公式 plugin repo は root `.cursor-plugin/marketplace.json` と各 plugin の `.cursor-plugin/plugin.json` / `mcp.json` を使う構造です。この repo もその形に合わせています。
-
-Cursor 3.10.17 の CLI には plugin marketplace を追加・install するコマンドが無く、`cursor --add-mcp` は MCP 直登録です。そのため `./install.sh --target cursor` は direct MCP 登録ではなく、`~/.cursor/plugins/local/hermes-grok-tools` に local Cursor plugin としてコピーします。
-Windows native では `.\install.ps1 -Target cursor` が `%USERPROFILE%\.cursor\plugins\local\hermes-grok-tools` にコピーします。
-
-Team / Enterprise 配布では Cursor Dashboard > Settings > Plugins > Team Marketplaces からこの GitHub repo を import してください。Cursor の Team Marketplaces は GitHub repository URL を読み取り、`.cursor-plugin/marketplace.json` を parse します。
-
-Cursor IDE の plugin UI から個人 install する場合は、Cursor の `/add-plugin` にこの GitHub URL を渡してください。
+Cursor 用の `.cursor-plugin/marketplace.json` と plugin manifest を同梱しています。個人利用では Cursor の `/add-plugin` に GitHub URL を渡すか、installer が `~/.cursor/plugins/local/grok-cli-tools` へ配置します。Team / Enterprise は Cursor Dashboard の Team Marketplaces へ repository URL を追加します。
 
 ### Antigravity / Gemini
 
-Gemini CLI / Antigravity 互換 extension として repo root に `gemini-extension.json` を置いています。
+`gemini-extension.json` と Antigravity plugin manifest を同梱しています。
 
 ```bash
-gemini extensions install https://github.com/sam-mountainman/hermes-grok-tools --consent
+gemini extensions install https://github.com/sam-mountainman/grok-cli-tools --consent
 ```
 
-`./install.sh --target gemini` は上記を実行します。`./install.sh --target antigravity` は `agy` があれば Antigravity CLI plugin cache へ plugin として stage し、なければ Gemini extension として install します。
-Windows native では `.\install.ps1 -Target gemini` または `.\install.ps1 -Target antigravity` を使います。
+## Windows native
 
-## できること
+WSL は不要です。PowerShell installer は次を行います。
 
-- `hermes_x_search`: xAI Responses API の `x_search` 経由で X を検索
-- `hermes_grok_image`: Hermes `image_generate` を xAI Grok Imagine provider で実行
-- `hermes_grok_video`: Hermes `video_generate` を xAI Grok Imagine provider で実行
-- `hermes_grok_video_edit`: 既存の公開 MP4 URL を xAI Imagine で編集
-- `hermes_grok_video_extend`: 既存の公開 MP4 URL を xAI Imagine で延長
-- `hermes_grok_status`: Hermes / OAuth / provider 設定の見える化
+- xAI 公式 `https://x.ai/cli/install.ps1` で native Windows Grok CLI を導入
+- `grok login` でブラウザ認証を開始
+- Python 3 がなければ `winget` で導入
+- `%LOCALAPPDATA%\grok-cli-tools\bin\python3.cmd` を作成
+- 依頼元 AI エージェントの plugin / extension だけを登録
 
-## 画像・動画生成モデル
+インストール後は対象の AI エージェントを一度再起動し、`Grokの状態を確認して` と依頼してください。
 
-デフォルトでは、コストを抑える通常モデルを使います。
+## 制約
 
-| 用途 | 通常 | 高品質 |
-|---|---|---|
-| 画像生成・画像編集 | `grok-imagine-image` | `grok-imagine-image-quality` |
-| 動画生成・編集・延長 | `grok-imagine-video` | `grok-imagine-video-1.5` |
+- `grok_research` は Grok CLI の Web 検索です。xAI Responses API の専用 `x_search` tool を保証するものではありません。
+- 公式 Grok CLI は、画像・動画生成を機械的に呼ぶ専用 CLI command を現在公開していません。そのため旧 Hermes 版の画像・動画生成 tool は含めていません。
+- 専用 X Search や Grok Imagine API を追加する場合は、別途 `XAI_API_KEY` を使う直接 API integration が必要です。
+- Grok CLI の利用可否、モデル、料金、利用枠は xAI 側のアカウントと提供条件に従います。
 
-AI エージェントが plugin tool を呼ぶときは、`quality` で切り替えできます。
+## セキュリティ
 
-```json
-{
-  "prompt": "cinematic product photo",
-  "quality": "standard"
-}
-```
+MCP bridge は Grok CLI を `dontAsk` mode で実行し、`Edit(*)` と `MCPTool(*)` を拒否します。`--always-approve` は使いません。Grok は repository を読み取り、検索、レビューできますが、ファイルを変更しません。
 
-```json
-{
-  "prompt": "cinematic product photo",
-  "quality": "high"
-}
-```
+## 商標
 
-`standard` は通常モデル、`quality` / `high` / `high_quality` は高品質モデルです。上級者向けには `model` を直接渡せます。`model` がある場合は `quality` より優先されます。
-
-注意: `grok-imagine-video-1.5` は text-to-video には使えません。高品質動画を使う場合は `image_url` / `reference_image_urls`、または video edit / extend の `video_url` が必要です。テキストだけで動画を作る場合は `quality: "standard"` を使います。
-
-## 生成前の質問ルール
-
-AI エージェントは、画像・動画生成 tool を呼ぶ前に、足りない設定だけをユーザーに確認します。ホストが対応している場合は `AskUserQuestion` / `request_user_input` のような構造化質問 UI を使い、未対応なら短いテキスト質問に fallback します。
-
-既にユーザーが指定している項目は聞き直しません。ユーザーが「任せる」「いい感じに」と言った場合は、通常品質と自然な初期値を選び、tool には `confirmed_settings: true` を渡します。
-
-| Tool | 事前に確認する項目 |
-|---|---|
-| `hermes_grok_image` | 品質、縦横比 |
-| `hermes_grok_video` | 品質、秒数、縦横比 |
-| `hermes_grok_video_edit` | 品質 |
-| `hermes_grok_video_extend` | 品質、延長秒数 |
-
-質問の選択肢は、非エンジニア向けにします。
-
-- 品質: 通常 / 高品質
-- 秒数: 5秒 / 10秒 / 指定
-- 縦横比: 16:9 / 9:16 / 1:1
-
-ユーザーには `grok-imagine-video-1.5` のような model ID を直接聞きません。高度な指定をユーザーが明示した場合だけ、`model` を直接渡します。
-
-## 認証条件
-
-Grok OAuth は初回だけ人間のブラウザ/device login が必要です。
-
-```bash
-hermes auth add xai-oauth
-```
-
-この repo は認証情報を保存しません。Hermes の `~/.hermes` 側の認証ストアを使います。
-
-## 配布ファイル
-
-| Host | 配布 manifest |
-|---|---|
-| Codex | `.agents/plugins/marketplace.json` + `plugins/hermes-grok-tools/.codex-plugin/plugin.json` |
-| Claude Code | `.claude-plugin/marketplace.json` + `plugins/hermes-grok-tools/.claude-plugin/plugin.json` |
-| Cursor | `.cursor-plugin/marketplace.json` + `plugins/hermes-grok-tools/.cursor-plugin/plugin.json` + `plugins/hermes-grok-tools/mcp.json` |
-| Antigravity | `.antigravity-plugin/plugin.json` + `mcp_config.json` |
-| Gemini | `gemini-extension.json` + `GEMINI.md` |
-
-## Windows native support
-
-Windows では WSL 不要です。PowerShell から実行します。
-
-```powershell
-git clone https://github.com/sam-mountainman/hermes-grok-tools
-cd hermes-grok-tools
-.\install.ps1
-```
-
-非エンジニアのユーザーには、AI エージェントへ GitHub URL を貼って「Windows native でセットアップして」と依頼してもらう想定です。エージェントは clone 後に `.\install.ps1` を実行します。
-
-Windows installer が行うこと:
-
-- Hermes CLI が無ければ、Hermes Agent 公式 Windows PowerShell installer を実行
-- Hermes の xAI/Grok provider と通常モデル初期値を設定
-- `hermes auth add xai-oauth` を起動し、ブラウザ/device login を促す
-- `%LOCALAPPDATA%\hermes-grok-tools\bin\python3.cmd` を作成し User PATH に追加
-- 現在の AI エージェントに合わせて plugin / extension を install
-
-インストール後は、Codex / Claude Code / Cursor / Gemini / Antigravity を一度再起動してください。Windows は User PATH 変更を既存アプリが拾わないことがあります。
-
-## 注意点
-
-- X検索は無料 X アカウントのブラウザ検索ではありません。Hermes の `x_search` は xAI API 側の tool です。
-- OAuth ログインだけは完全自動化できません。
-- 動画の edit/extend は公開 HTTPS MP4 URL が必要です。
-- Cursor CLI は 2026-07-08 時点で plugin install コマンドを公開していません。Cursor plugin 自体は存在しますが、CLI ではなく IDE `/add-plugin`、Team Marketplace import、または local plugin install が導線です。
-- Windows native は PowerShell の `install.ps1` を使います。`install.sh` は macOS / Linux / WSL 向けです。
+plugin icon は X 公式 Brand Toolkit の X logo asset を使用しています。X、Grok、関連する名称とロゴは各権利者の商標です。この project は X Corp. または xAI の公式・提携 plugin ではありません。asset の利用には X の Brand Guidelines が適用されます。詳細は `THIRD_PARTY_NOTICES.md` を参照してください。
 
 ## 開発用確認
 
 ```bash
 bash -n install.sh
-python3 -m json.tool gemini-extension.json
 python3 -m pytest -q
-python3 /Users/higataiyu/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py plugins/hermes-grok-tools
-claude plugin validate plugins/hermes-grok-tools
+python3 /Users/higataiyu/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py plugins/grok-cli-tools
+python3 /Users/higataiyu/.codex/skills/.system/skill-creator/scripts/quick_validate.py plugins/grok-cli-tools/skills/consult-grok
+claude plugin validate plugins/grok-cli-tools
 claude plugin validate .
 gemini extensions validate .
 ```

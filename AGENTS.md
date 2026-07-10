@@ -1,8 +1,6 @@
-# Hermes Grok Tools Setup
+# Grok CLI Tools Setup
 
-When a user gives this repository URL and asks to set it up, install the plugin for the current AI agent host.
-
-Default command:
+When a user gives this repository URL and asks to set it up, clone it and install the plugin only for the current AI agent host.
 
 macOS / Linux:
 
@@ -16,7 +14,7 @@ Windows native PowerShell:
 .\install.ps1
 ```
 
-`install.sh` auto-detects Codex, Claude Code, Cursor, Antigravity, or Gemini when the host exposes enough environment context. If auto-detection fails, rerun with one explicit target:
+If auto-detection fails, pass exactly one target:
 
 ```bash
 ./install.sh --target codex
@@ -26,27 +24,19 @@ Windows native PowerShell:
 ./install.sh --target gemini
 ```
 
-On Windows native, use:
+On Windows use the corresponding `-Target` value. Do not require WSL.
 
-```powershell
-.\install.ps1 -Target codex
-.\install.ps1 -Target claude-code
-.\install.ps1 -Target cursor
-.\install.ps1 -Target antigravity
-.\install.ps1 -Target gemini
-```
+The installer uses xAI's official Grok CLI installer and starts `grok login`. Browser or device-code authentication requires user interaction. Do not read, print, or copy the contents of `~/.grok/auth.json`.
 
-Do not install this as a bare MCP server unless the user explicitly asks for a fallback. The normal path is a host-native plugin or extension:
+Install this as a host-native plugin or extension, not as a bare MCP server unless the user explicitly requests the fallback. Do not install it into other AI agent hosts.
 
-- Codex: Codex plugin marketplace.
-- Claude Code: Claude Code plugin marketplace.
-- Cursor: local Cursor plugin, plus Team Marketplace support from the GitHub repo.
-- Antigravity/Gemini: Gemini-compatible extension/plugin.
+After setup:
 
-Hermes xAI/Grok OAuth is per-user. If the installer starts `hermes auth add xai-oauth`, browser/device login may require the user's action.
+- Use `grok_status` for local setup/authentication checks; it does not call a model.
+- Use `grok_ask` when the user explicitly asks Grok or Grok 4.5 a normal question or wants a Grok second opinion.
+- Use `grok_research` when the user explicitly asks Grok to research current information.
+- Use `grok_plan` or `grok_review` when the user explicitly asks Grok to plan or review.
+- Pass the returned `session_id` to continue the same Grok conversation.
+- Do not invoke Grok for every ordinary question without a routing reason; it adds latency and consumes the user's Grok allowance.
 
-The installer configures the default lower-cost Imagine models: `grok-imagine-image` for images and `grok-imagine-video` for videos. Plugin tools also accept `quality`: `standard` uses those defaults, while `quality` / `high` / `high_quality` selects `grok-imagine-image-quality` or `grok-imagine-video-1.5`. `grok-imagine-video-1.5` does not support text-to-video; use it only with image/video input.
-
-Before calling image/video generation tools, ask only for missing settings that affect output or cost. Use structured AskUserQuestion/request_user_input UI when the host supports it; otherwise ask a concise text fallback. Do not ask users to choose raw model IDs. Ask for quality and aspect ratio for images; quality, duration seconds, and aspect ratio for video generation; quality for video edit; quality and extension seconds for video extend. If the user already specified the settings or says to choose automatically, call the tool with `confirmed_settings: true` and sensible defaults.
-
-On Windows, do not ask the user to install WSL. `install.ps1` uses Hermes Agent's native Windows installer and creates a `python3.cmd` shim for MCP hosts.
+The bridge is read-only. Do not weaken its `dontAsk`, `Edit(*)`, or `MCPTool(*)` restrictions. `grok_research` is Web research, not a guaranteed dedicated X Search API. Image and video generation are not exposed because Grok CLI does not currently publish dedicated machine-callable commands for them.

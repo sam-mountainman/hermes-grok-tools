@@ -1,13 +1,13 @@
 {
-  "name": "hermes-grok-tools",
-  "version": "0.1.0",
-  "description": "Hermes Agent Grok OAuth tools for Gemini CLI and Antigravity-compatible Gemini extension hosts.",
-  "icon": "plugins/hermes-grok-tools/assets/hermesagent.png",
+  "name": "grok-cli-tools",
+  "version": "1.0.0",
+  "description": "Call Grok 4.5 from Gemini CLI and Antigravity through the official Grok CLI.",
+  "icon": "plugins/grok-cli-tools/assets/x-logo-black.png",
   "mcpServers": {
-    "hermes-grok": {
+    "grok-cli": {
       "command": "python3",
       "args": [
-        "${extensionPath}${/}plugins${/}hermes-grok-tools${/}scripts${/}hermes_grok_mcp.py"
+        "${extensionPath}${/}plugins${/}grok-cli-tools${/}scripts${/}grok_cli_mcp.py"
       ],
       "cwd": "${extensionPath}",
       "env": {

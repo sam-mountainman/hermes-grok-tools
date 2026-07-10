@@ -9,7 +9,7 @@ def test_write_mcp_json_adds_server(tmp_path: Path):
     script = (
         Path(__file__).resolve().parents[1]
         / "plugins"
-        / "hermes-grok-tools"
+        / "grok-cli-tools"
         / "scripts"
         / "write_mcp_json.py"
     )
@@ -20,17 +20,17 @@ def test_write_mcp_json_adds_server(tmp_path: Path):
             "--config",
             str(config),
             "--name",
-            "hermes-grok",
+            "grok-cli",
             "--python",
             sys.executable,
             "--server",
-            "/tmp/hermes_grok_mcp.py",
-            "--hermes-agent-path",
-            "/tmp/hermes-agent",
+            "/tmp/grok_cli_mcp.py",
+            "--grok-cli-bin",
+            "/tmp/grok",
         ]
     )
     data = json.loads(config.read_text(encoding="utf-8"))
-    server = data["mcpServers"]["hermes-grok"]
+    server = data["mcpServers"]["grok-cli"]
     assert server["command"] == sys.executable
-    assert server["args"] == ["/tmp/hermes_grok_mcp.py"]
-    assert server["env"]["HERMES_AGENT_PATH"] == "/tmp/hermes-agent"
+    assert server["args"] == ["/tmp/grok_cli_mcp.py"]
+    assert server["env"]["GROK_CLI_BIN"] == "/tmp/grok"
