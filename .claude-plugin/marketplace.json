@@ -10,9 +10,9 @@
   "plugins": [
     {
       "name": "grok-cli-tools",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "source": "./plugins/grok-cli-tools",
-      "description": "Read-only Grok 4.5 questions, research, planning, and code review through Grok CLI.",
+      "description": "Grok 4.5 questions, research, planning, review, and user-confirmed Grok Imagine media generation through Grok CLI.",
       "author": {
         "name": "sam-mountainman"
       },

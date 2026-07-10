@@ -1,7 +1,7 @@
 {
   "name": "grok-cli-tools",
-  "version": "1.0.0+codex.20260710034507",
-  "description": "Call Grok 4.5 from Codex through the official Grok CLI for questions, research, planning, and review.",
+  "version": "1.1.0+codex.20260710224612",
+  "description": "Call Grok 4.5 at high reasoning effort and generate Grok Imagine images or videos through the official Grok CLI.",
   "author": {
     "name": "sam-mountainman",
     "url": "https://github.com/sam-mountainman"
@@ -22,17 +22,19 @@
   "interface": {
     "displayName": "Grok CLI Tools",
     "shortDescription": "Consult Grok 4.5 from Codex through Grok CLI.",
-    "longDescription": "Adds read-only MCP tools for normal Grok 4.5 questions, web research, implementation planning, and code review. Authentication stays in the official Grok CLI through browser login or XAI_API_KEY.",
+    "longDescription": "Adds Grok 4.5 tools for questions, web research, implementation planning, code review, and user-confirmed Grok Imagine image or video generation. Grok 4.5 defaults to high reasoning effort. Authentication stays in the official Grok CLI through browser login or XAI_API_KEY.",
     "developerName": "sam-mountainman",
     "category": "Productivity",
     "capabilities": [
       "Interactive",
-      "Read"
+      "Read",
+      "Media generation"
     ],
     "defaultPrompt": [
       "Grok 4.5\u306b\u3053\u306e\u8cea\u554f\u3092\u805e\u3044\u3066",
       "Grok\u3067\u6700\u65b0\u60c5\u5831\u3092\u8abf\u3079\u3066",
-      "Grok\u306b\u3053\u306e\u5909\u66f4\u3092\u30ec\u30d3\u30e5\u30fc\u3055\u305b\u3066"
+      "Grok\u306b\u3053\u306e\u5909\u66f4\u3092\u30ec\u30d3\u30e5\u30fc\u3055\u305b\u3066",
+      "Grok Imagine\u3067\u753b\u50cf\u3092\u4f5c\u3063\u3066"
     ],
     "brandColor": "#000000",
     "composerIcon": "./assets/x-logo-black.png",

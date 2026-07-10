@@ -18,12 +18,24 @@ from pathlib import Path
 from typing import Any
 
 SERVER_NAME = "grok-cli"
-SERVER_VERSION = "1.0.0"
+SERVER_VERSION = "1.1.0"
 DEFAULT_MODEL = os.environ.get("GROK_CLI_MODEL", "grok-4.5")
+DEFAULT_EFFORT = os.environ.get("GROK_CLI_EFFORT", "high").strip().lower() or "high"
 DEFAULT_TIMEOUT_SECONDS = 900
 MIN_TIMEOUT_SECONDS = 30
 MAX_TIMEOUT_SECONDS = 3600
-EFFORT_LEVELS = {"low", "medium", "high", "xhigh", "max"}
+EFFORT_LEVELS = {"low", "medium", "high"}
+IMAGE_MODELS = {
+    "standard": "grok-imagine-image",
+    "high": "grok-imagine-image-quality",
+}
+VIDEO_MODELS = {
+    "standard": "grok-imagine-video",
+    "high": "grok-imagine-video-1.5",
+}
+IMAGE_RESOLUTIONS = {"1k", "2k"}
+VIDEO_RESOLUTIONS = {"480p", "720p", "1080p"}
+ASPECT_RATIOS = {"1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3"}
 
 
 class GrokCliError(RuntimeError):
@@ -118,6 +130,7 @@ def tool_status(_: dict[str, Any]) -> dict[str, Any]:
         "grok_cli": grok_bin,
         "version": version,
         "default_model": DEFAULT_MODEL,
+        "default_effort": DEFAULT_EFFORT,
         "authentication": authentication,
         "next_steps": (
             []
@@ -284,11 +297,10 @@ def _build_command(grok_bin: str, prompt: str, args: dict[str, Any], cwd: Path) 
         str(_max_turns(args.get("max_turns"))),
     ]
 
-    effort = str(args.get("effort") or "").strip().lower()
-    if effort:
-        if effort not in EFFORT_LEVELS:
-            raise GrokCliError("effort must be low, medium, high, xhigh, or max.")
-        command.extend(["--effort", effort])
+    effort = str(args.get("effort") or DEFAULT_EFFORT).strip().lower()
+    if effort not in EFFORT_LEVELS:
+        raise GrokCliError("effort must be low, medium, or high for grok-4.5.")
+    command.extend(["--effort", effort])
 
     session_id = str(args.get("session_id") or "").strip()
     if session_id:
@@ -351,6 +363,7 @@ def _run_grok(prompt: str, args: dict[str, Any]) -> dict[str, Any]:
         or requested_session_id
         or new_session_id,
         "model": str(args.get("model") or DEFAULT_MODEL),
+        "effort": str(args.get("effort") or DEFAULT_EFFORT),
         "cwd": str(cwd),
         "result": payload,
         "stderr": stderr or None,
@@ -411,6 +424,165 @@ def tool_review(args: dict[str, Any]) -> dict[str, Any]:
     return _run_grok(prompt, args)
 
 
+def _required_media_settings(
+    args: dict[str, Any], *, tool_name: str, fields: list[str]
+) -> dict[str, Any]:
+    cleaned = dict(args)
+    confirmed = cleaned.pop("confirmed_settings", False) is True
+    if not confirmed:
+        raise GrokCliError(
+            f"{tool_name} requires user-confirmed settings before generation. "
+            "Use the host's structured AskUserQuestion/request_user_input UI to ask for the "
+            "missing model/quality and output settings. If the user already supplied or delegated "
+            "all settings, call again with confirmed_settings=true."
+        )
+
+    missing = [field for field in fields if cleaned.get(field) in (None, "")]
+    if missing:
+        raise GrokCliError(
+            f"{tool_name} is missing confirmed settings: {', '.join(missing)}. "
+            "Ask the user for them before retrying."
+        )
+    return cleaned
+
+
+def _normalized_quality(args: dict[str, Any]) -> str:
+    quality = str(args.get("quality") or "").strip().lower().replace("-", "_")
+    aliases = {
+        "default": "standard",
+        "fast": "standard",
+        "quality": "high",
+        "high_quality": "high",
+        "best": "high",
+    }
+    quality = aliases.get(quality, quality)
+    if quality not in IMAGE_MODELS:
+        raise GrokCliError("quality must be standard or high.")
+    return quality
+
+
+def _media_model(args: dict[str, Any], models: dict[str, str]) -> tuple[str, str]:
+    quality = _normalized_quality(args)
+    explicit_model = str(args.get("media_model") or "").strip()
+    model = explicit_model or models[quality]
+    if model not in set(models.values()):
+        raise GrokCliError(f"Unsupported media_model: {model}")
+    if explicit_model:
+        quality = next(key for key, value in models.items() if value == model)
+    return quality, model
+
+
+def _validated_aspect_ratio(args: dict[str, Any]) -> str:
+    aspect_ratio = str(args.get("aspect_ratio") or "").strip()
+    if aspect_ratio not in ASPECT_RATIOS:
+        raise GrokCliError(
+            "aspect_ratio must be 1:1, 16:9, 9:16, 4:3, 3:4, 3:2, or 2:3."
+        )
+    return aspect_ratio
+
+
+def tool_generate_image(args: dict[str, Any]) -> dict[str, Any]:
+    settings = _required_media_settings(
+        args,
+        tool_name="grok_generate_image",
+        fields=["quality", "resolution", "aspect_ratio"],
+    )
+    quality, media_model = _media_model(settings, IMAGE_MODELS)
+    resolution = str(settings["resolution"]).strip().lower()
+    if resolution not in IMAGE_RESOLUTIONS:
+        raise GrokCliError("resolution must be 1k or 2k for image generation.")
+    aspect_ratio = _validated_aspect_ratio(settings)
+    request = str(settings.get("prompt") or "").strip()
+    if not request:
+        raise GrokCliError("prompt must not be empty for image generation.")
+    source_path = str(settings.get("source_image_path") or "").strip()
+    source_instruction = (
+        f"Edit the source image at this absolute local path: {source_path}\n"
+        if source_path
+        else "Generate a new image from text.\n"
+    )
+    prompt = (
+        "Use Grok Build's bundled Imagine image-generation tool now. Do not merely describe an "
+        "image. Generate exactly one image, save it through the built-in media tool, and return "
+        "the saved absolute file path. Do not edit repository source files.\n\n"
+        f"{source_instruction}"
+        f"Media model: {media_model}\n"
+        f"Quality: {quality}\n"
+        f"Resolution: {resolution}\n"
+        f"Aspect ratio: {aspect_ratio}\n"
+        f"Generation request:\n{request}"
+    )
+    result = _run_grok(prompt, settings)
+    result["media"] = {
+        "type": "image",
+        "model": media_model,
+        "quality": quality,
+        "resolution": resolution,
+        "aspect_ratio": aspect_ratio,
+    }
+    return result
+
+
+def tool_generate_video(args: dict[str, Any]) -> dict[str, Any]:
+    settings = _required_media_settings(
+        args,
+        tool_name="grok_generate_video",
+        fields=["quality", "resolution", "duration", "aspect_ratio"],
+    )
+    quality, media_model = _media_model(settings, VIDEO_MODELS)
+    resolution = str(settings["resolution"]).strip().lower()
+    if resolution not in VIDEO_RESOLUTIONS:
+        raise GrokCliError("resolution must be 480p, 720p, or 1080p for video generation.")
+    try:
+        duration = int(settings["duration"])
+    except (TypeError, ValueError) as exc:
+        raise GrokCliError("duration must be an integer from 1 to 15 seconds.") from exc
+    if not 1 <= duration <= 15:
+        raise GrokCliError("duration must be from 1 to 15 seconds.")
+    aspect_ratio = _validated_aspect_ratio(settings)
+    request = str(settings.get("prompt") or "").strip()
+    if not request:
+        raise GrokCliError("prompt must not be empty for video generation.")
+    source_path = str(settings.get("source_image_path") or "").strip()
+    if media_model == "grok-imagine-video-1.5" and not source_path:
+        raise GrokCliError(
+            "grok-imagine-video-1.5 requires source_image_path. For text-to-video, use "
+            "quality=standard and grok-imagine-video."
+        )
+    if resolution == "1080p" and media_model != "grok-imagine-video-1.5":
+        raise GrokCliError(
+            "1080p requires grok-imagine-video-1.5 with source_image_path. "
+            "Use 720p or 480p for text-to-video."
+        )
+    source_instruction = (
+        f"Animate the source image at this absolute local path: {source_path}\n"
+        if source_path
+        else "Generate a new video from text.\n"
+    )
+    prompt = (
+        "Use Grok Build's bundled Imagine video-generation tool now. Do not merely describe a "
+        "video. Generate exactly one video, save it through the built-in media tool, and return "
+        "the saved absolute file path. Do not edit repository source files.\n\n"
+        f"{source_instruction}"
+        f"Media model: {media_model}\n"
+        f"Quality: {quality}\n"
+        f"Resolution: {resolution}\n"
+        f"Duration: {duration} seconds\n"
+        f"Aspect ratio: {aspect_ratio}\n"
+        f"Generation request:\n{request}"
+    )
+    result = _run_grok(prompt, settings)
+    result["media"] = {
+        "type": "video",
+        "model": media_model,
+        "quality": quality,
+        "resolution": resolution,
+        "duration": duration,
+        "aspect_ratio": aspect_ratio,
+    }
+    return result
+
+
 COMMON_PROPERTIES: dict[str, Any] = {
     "cwd": {
         "type": "string",
@@ -422,7 +594,9 @@ COMMON_PROPERTIES: dict[str, Any] = {
     },
     "effort": {
         "type": "string",
-        "enum": ["low", "medium", "high", "xhigh", "max"],
+        "enum": ["low", "medium", "high"],
+        "default": DEFAULT_EFFORT,
+        "description": "Grok 4.5 reasoning effort. Defaults to high.",
     },
     "session_id": {
         "type": "string",
@@ -478,6 +652,83 @@ TOOLS: dict[str, dict[str, Any]] = {
         "description": "Ask Grok 4.5 to review a repository and current git diff read-only. Use when the user asks Grok for code review or a second review opinion.",
         "inputSchema": _schema("instructions", "Review scope or special concerns."),
         "handler": tool_review,
+    },
+    "grok_generate_image": {
+        "description": "Generate or edit one image with Grok Imagine through the OAuth-authenticated Grok CLI. Before calling, use structured AskUserQuestion/request_user_input to confirm quality/model, resolution, and aspect ratio; then set confirmed_settings=true. Do not choose settings silently unless the user explicitly delegates them.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "prompt": {"type": "string"},
+                "confirmed_settings": {
+                    "type": "boolean",
+                    "description": "True only after the user supplied, approved, or delegated all generation settings.",
+                },
+                "quality": {"type": "string", "enum": ["standard", "high"]},
+                "media_model": {
+                    "type": "string",
+                    "enum": ["grok-imagine-image", "grok-imagine-image-quality"],
+                },
+                "resolution": {"type": "string", "enum": ["1k", "2k"]},
+                "aspect_ratio": {
+                    "type": "string",
+                    "enum": ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3"],
+                },
+                "source_image_path": {
+                    "type": "string",
+                    "description": "Optional absolute local path for image editing.",
+                },
+                **COMMON_PROPERTIES,
+            },
+            "required": [
+                "prompt",
+                "confirmed_settings",
+                "quality",
+                "resolution",
+                "aspect_ratio",
+            ],
+        },
+        "handler": tool_generate_image,
+    },
+    "grok_generate_video": {
+        "description": "Generate one text-to-video or image-to-video result with Grok Imagine through the OAuth-authenticated Grok CLI. Before calling, use structured AskUserQuestion/request_user_input to confirm model/quality, resolution, duration, and aspect ratio; then set confirmed_settings=true. grok-imagine-video-1.5 and 1080p require source_image_path.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "prompt": {"type": "string"},
+                "confirmed_settings": {
+                    "type": "boolean",
+                    "description": "True only after the user supplied, approved, or delegated all generation settings.",
+                },
+                "quality": {"type": "string", "enum": ["standard", "high"]},
+                "media_model": {
+                    "type": "string",
+                    "enum": ["grok-imagine-video", "grok-imagine-video-1.5"],
+                },
+                "resolution": {
+                    "type": "string",
+                    "enum": ["480p", "720p", "1080p"],
+                },
+                "duration": {"type": "integer", "minimum": 1, "maximum": 15},
+                "aspect_ratio": {
+                    "type": "string",
+                    "enum": ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3"],
+                },
+                "source_image_path": {
+                    "type": "string",
+                    "description": "Optional absolute local path for image-to-video generation.",
+                },
+                **COMMON_PROPERTIES,
+            },
+            "required": [
+                "prompt",
+                "confirmed_settings",
+                "quality",
+                "resolution",
+                "duration",
+                "aspect_ratio",
+            ],
+        },
+        "handler": tool_generate_video,
     },
 }
 

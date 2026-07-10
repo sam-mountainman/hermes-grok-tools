@@ -25,6 +25,8 @@ def test_tool_list_contains_expected_tools():
         "grok_research",
         "grok_plan",
         "grok_review",
+        "grok_generate_image",
+        "grok_generate_video",
     }
 
 
@@ -34,7 +36,7 @@ def test_initialize_response_shape():
     )
     assert response["id"] == 1
     assert response["result"]["serverInfo"]["name"] == "grok-cli"
-    assert response["result"]["serverInfo"]["version"] == "1.0.0"
+    assert response["result"]["serverInfo"]["version"] == "1.1.0"
     assert "tools" in response["result"]["capabilities"]
 
 
@@ -51,6 +53,7 @@ def test_build_command_uses_grok_45_and_read_only_flags(tmp_path: Path):
     command = grok_cli_mcp._build_command("/tmp/grok", "Question", {}, tmp_path)
     assert command[:4] == ["/tmp/grok", "--no-auto-update", "-p", "Question"]
     assert command[command.index("--model") + 1] == "grok-4.5"
+    assert command[command.index("--effort") + 1] == "high"
     assert command[command.index("--permission-mode") + 1] == "dontAsk"
     assert "Edit(*)" in command
     assert "MCPTool(*)" in command
@@ -63,11 +66,11 @@ def test_build_command_supports_effort_and_resume(tmp_path: Path):
     command = grok_cli_mcp._build_command(
         "/tmp/grok",
         "Follow up",
-        {"model": "grok-custom", "effort": "max", "session_id": "session-123"},
+        {"model": "grok-custom", "effort": "medium", "session_id": "session-123"},
         tmp_path,
     )
     assert command[command.index("--model") + 1] == "grok-custom"
-    assert command[command.index("--effort") + 1] == "max"
+    assert command[command.index("--effort") + 1] == "medium"
     assert command[command.index("--resume") + 1] == "session-123"
 
 
@@ -113,6 +116,7 @@ def test_run_grok_returns_answer_without_real_cli(monkeypatch, tmp_path: Path):
     assert result["answer"] == "Mock Grok response"
     assert result["session_id"] == "session-mock"
     assert result["model"] == "grok-4.5"
+    assert result["effort"] == "medium"
     assert calls[0][1]["cwd"] == str(tmp_path)
 
 
@@ -158,3 +162,124 @@ def test_cli_auth_error_is_returned_as_mcp_tool_error(monkeypatch):
 def test_research_description_does_not_claim_dedicated_x_search():
     description = grok_cli_mcp.TOOLS["grok_research"]["description"]
     assert "not a guaranteed dedicated X Search API" in description
+
+
+def test_grok_45_rejects_unsupported_effort(tmp_path: Path):
+    try:
+        grok_cli_mcp._build_command(
+            "/tmp/grok", "Question", {"effort": "max"}, tmp_path
+        )
+    except grok_cli_mcp.GrokCliError as exc:
+        assert "low, medium, or high" in str(exc)
+    else:
+        raise AssertionError("Expected GrokCliError")
+
+
+def test_media_generation_requires_confirmation():
+    try:
+        grok_cli_mcp.tool_generate_image(
+            {
+                "prompt": "A mountain lake",
+                "quality": "high",
+                "resolution": "2k",
+                "aspect_ratio": "16:9",
+            }
+        )
+    except grok_cli_mcp.GrokCliError as exc:
+        assert "AskUserQuestion/request_user_input" in str(exc)
+    else:
+        raise AssertionError("Expected GrokCliError")
+
+
+def test_media_tool_schemas_require_confirmed_output_settings():
+    image_required = set(
+        grok_cli_mcp.TOOLS["grok_generate_image"]["inputSchema"]["required"]
+    )
+    video_required = set(
+        grok_cli_mcp.TOOLS["grok_generate_video"]["inputSchema"]["required"]
+    )
+    assert {
+        "confirmed_settings",
+        "quality",
+        "resolution",
+        "aspect_ratio",
+    } <= image_required
+    assert {
+        "confirmed_settings",
+        "quality",
+        "resolution",
+        "duration",
+        "aspect_ratio",
+    } <= video_required
+
+
+def test_image_generation_passes_confirmed_settings(monkeypatch):
+    captured = {}
+
+    def fake_run(prompt, args):
+        captured["prompt"] = prompt
+        captured["args"] = args
+        return {"ok": True, "answer": "/tmp/image.png"}
+
+    monkeypatch.setattr(grok_cli_mcp, "_run_grok", fake_run)
+    result = grok_cli_mcp.tool_generate_image(
+        {
+            "prompt": "A mountain lake",
+            "confirmed_settings": True,
+            "quality": "high",
+            "resolution": "2k",
+            "aspect_ratio": "16:9",
+        }
+    )
+
+    assert "grok-imagine-image-quality" in captured["prompt"]
+    assert "Resolution: 2k" in captured["prompt"]
+    assert result["media"]["model"] == "grok-imagine-image-quality"
+
+
+def test_video_generation_rejects_1080p_text_to_video(monkeypatch):
+    monkeypatch.setattr(
+        grok_cli_mcp,
+        "_run_grok",
+        lambda prompt, args: {"ok": True, "answer": "/tmp/video.mp4"},
+    )
+    try:
+        grok_cli_mcp.tool_generate_video(
+            {
+                "prompt": "A mountain flyover",
+                "confirmed_settings": True,
+                "quality": "standard",
+                "resolution": "1080p",
+                "duration": 10,
+                "aspect_ratio": "16:9",
+            }
+        )
+    except grok_cli_mcp.GrokCliError as exc:
+        assert "1080p requires" in str(exc)
+    else:
+        raise AssertionError("Expected GrokCliError")
+
+
+def test_video_generation_uses_quality_model_with_source(monkeypatch):
+    captured = {}
+
+    def fake_run(prompt, args):
+        captured["prompt"] = prompt
+        return {"ok": True, "answer": "/tmp/video.mp4"}
+
+    monkeypatch.setattr(grok_cli_mcp, "_run_grok", fake_run)
+    result = grok_cli_mcp.tool_generate_video(
+        {
+            "prompt": "Animate the clouds",
+            "confirmed_settings": True,
+            "quality": "high",
+            "resolution": "1080p",
+            "duration": 10,
+            "aspect_ratio": "16:9",
+            "source_image_path": "/tmp/source.png",
+        }
+    )
+
+    assert "grok-imagine-video-1.5" in captured["prompt"]
+    assert "Duration: 10 seconds" in captured["prompt"]
+    assert result["media"]["resolution"] == "1080p"
