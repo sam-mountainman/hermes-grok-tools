@@ -36,7 +36,12 @@ After setup:
 - Use `grok_ask` when the user explicitly asks Grok or Grok 4.5 a normal question or wants a Grok second opinion.
 - Use `grok_research` when the user explicitly asks Grok to research current information.
 - Use `grok_plan` or `grok_review` when the user explicitly asks Grok to plan or review.
+- Use `grok_generate_image` or `grok_generate_video` when the user explicitly asks this plugin to create Grok Imagine media.
 - Pass the returned `session_id` to continue the same Grok conversation.
 - Do not invoke Grok for every ordinary question without a routing reason; it adds latency and consumes the user's Grok allowance.
 
-The bridge is read-only. Do not weaken its `dontAsk`, `Edit(*)`, or `MCPTool(*)` restrictions. `grok_research` is Web research, not a guaranteed dedicated X Search API. Image and video generation are not exposed because Grok CLI does not currently publish dedicated machine-callable commands for them.
+Grok 4.5 uses `high` reasoning effort by default. Only `low`, `medium`, and `high` are valid; map deep/max requests to `high`.
+
+Before image or video generation, use the host's structured AskUserQuestion/request_user_input UI to confirm missing settings. For images confirm quality/model, 1K/2K resolution, and aspect ratio. For videos confirm model/quality and resolution, 1-15 second duration, and aspect ratio. Do not repeat settings already supplied; if the user delegates them, choose sensible defaults. Pass `confirmed_settings: true` only after the user supplies, approves, or delegates every setting. `grok-imagine-video-1.5` and 1080p require a source image.
+
+The repository inspection path stays read-only. Media tools may create generated output files through Grok Build's bundled Imagine tools. Do not weaken the bridge's `dontAsk`, `Edit(*)`, or `MCPTool(*)` restrictions. `grok_research` is Web research, not a guaranteed dedicated X Search API.

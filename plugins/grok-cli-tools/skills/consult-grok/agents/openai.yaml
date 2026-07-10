@@ -1,4 +1,4 @@
 interface:
   display_name: "Consult Grok"
-  short_description: "Ask Grok 4.5 for answers, research, plans, and reviews"
+  short_description: "Ask Grok 4.5 or create Grok Imagine media"
   default_prompt: "Use $consult-grok to ask Grok 4.5 for a second opinion."

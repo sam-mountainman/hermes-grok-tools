@@ -1,8 +1,8 @@
 # Grok CLI Tools
 
-Codex / Claude Code / Cursor / Antigravity / Gemini から、公式 Grok CLI を通じて Grok 4.5 に質問・調査・設計・レビューを依頼するための plugin marketplace repository です。
+Codex / Claude Code / Cursor / Antigravity / Gemini から、公式 Grok CLI を通じて Grok 4.5 に質問・調査・設計・レビューを依頼し、Grok Imagineで画像・動画を生成するためのplugin marketplace repositoryです。
 
-ホスト AI が実装や会話を担当し、必要な場面だけ Grok 4.5 を外部ブレーンとして呼びます。Grok は読み取り専用で起動し、ファイル編集や外部 MCP 呼び出しを許可しません。
+ホストAIが実装や会話を担当し、必要な場面だけGrok 4.5を外部ブレーンとして呼びます。リポジトリに対するファイル編集や外部MCP呼び出しは許可せず、明示されたメディア生成時だけGrok BuildのImagine toolが出力ファイルを作成します。
 
 ## AI エージェントに頼むだけのセットアップ
 
@@ -57,8 +57,10 @@ Windows native:
 | `grok_research` | Grok CLI の Web 検索を使った現在情報の調査と出典収集 |
 | `grok_plan` | repository を読み取り専用で調べ、実装計画を作成 |
 | `grok_review` | repository と `git diff` を読み取り専用でレビュー |
+| `grok_generate_image` | Grok Imagineで画像生成・画像編集 |
+| `grok_generate_video` | Grok Imagineでtext-to-video・image-to-video生成 |
 
-`grok_ask` などは `session_id` を返します。続きの質問で同じ `session_id` を渡すと、同じ Grok セッションを再開できます。既定モデルは `grok-4.5` で、必要な場合だけ `model` を上書きできます。
+`grok_ask`などは`session_id`を返します。続きの質問で同じ`session_id`を渡すと、同じGrokセッションを再開できます。既定モデルは`grok-4.5`、既定推論レベルは公式既定と同じ`high`です。Grok 4.5で指定できる推論レベルは`low`、`medium`、`high`です。
 
 利用例:
 
@@ -67,9 +69,29 @@ Grok 4.5にこの質問を聞いて。
 Grokにもこの設計のセカンドオピニオンを出させて。
 Grokで最新情報を調べて、出典も付けて。
 Grokにこの変更をレビューさせて。
+Grok Imagineで縦長の画像を作って。
+Grokで10秒の動画を作って。
 ```
 
 プラグイン同梱の `consult-grok` skill は、ユーザーが Grok / Grok 4.5 を明示した場合に適切な tool へルーティングします。全ての普通の質問で勝手に呼び出して利用枠を消費する設計にはしていません。
+
+## 画像・動画生成前の確認
+
+画像・動画を生成する前に、ホストAIは`AskUserQuestion`、`request_user_input`などの構造化質問UIで未指定の設定を確認します。既に指定された項目は聞き直しません。「任せる」と言われた場合は推奨値を選びます。
+
+画像で確認する項目:
+
+- 品質・モデル: 高品質`grok-imagine-image-quality`、または標準`grok-imagine-image`
+- 解像度: 2K、または1K
+- 縦横比: 16:9、9:16、1:1など
+
+動画で確認する項目:
+
+- 品質・モデル・解像度: text-to-videoは`grok-imagine-video`の720pまたは480p
+- 秒数: 1〜15秒。質問候補は5秒、10秒、15秒
+- 縦横比: 16:9、9:16、1:1など
+
+元画像があるimage-to-videoでは、`grok-imagine-video-1.5`の1080pも選択できます。1.5と1080pはtext-to-videoでは使えません。確認後だけtoolへ`confirmed_settings: true`を渡すため、設定未確認のまま生成枠を消費しません。
 
 ## 認証
 
@@ -130,13 +152,13 @@ WSL は不要です。PowerShell installer は次を行います。
 ## 制約
 
 - `grok_research` は Grok CLI の Web 検索です。xAI Responses API の専用 `x_search` tool を保証するものではありません。
-- 公式 Grok CLI は、画像・動画生成を機械的に呼ぶ専用 CLI command を現在公開していません。そのため旧 Hermes 版の画像・動画生成 tool は含めていません。
-- 専用 X Search や Grok Imagine API を追加する場合は、別途 `XAI_API_KEY` を使う直接 API integration が必要です。
+- 画像・動画生成はGrok Buildに同梱されたImagine toolをGrok 4.5経由で呼びます。直接Imagine API integrationではなく、OAuthでログインしたGrok CLIの利用条件に従います。
+- 生成モデルや解像度の提供状況はxAI側で変更される可能性があります。
 - Grok CLI の利用可否、モデル、料金、利用枠は xAI 側のアカウントと提供条件に従います。
 
 ## セキュリティ
 
-MCP bridge は Grok CLI を `dontAsk` mode で実行し、`Edit(*)` と `MCPTool(*)` を拒否します。`--always-approve` は使いません。Grok は repository を読み取り、検索、レビューできますが、ファイルを変更しません。
+MCP bridgeはGrok CLIを`dontAsk` modeで実行し、`Edit(*)`と`MCPTool(*)`を拒否します。`--always-approve`は使いません。Grokはrepositoryを読み取り、検索、レビューできますが、ソースファイルを変更しません。画像・動画生成時だけImagine toolが生成物を保存します。
 
 ## 商標
 

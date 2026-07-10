@@ -1,6 +1,6 @@
 # Grok CLI Tools
 
-Use the `grok-cli` MCP server when the user explicitly asks Grok or Grok 4.5 for an answer, research, implementation planning, or code review.
+Use the `grok-cli` MCP server when the user explicitly asks Grok or Grok 4.5 for an answer, research, implementation planning, code review, or Grok Imagine media generation.
 
 Call `grok_status` for local setup/authentication checks. It does not call a model. Use the returned `session_id` for follow-up questions in the same Grok conversation. Do not invoke Grok for every ordinary question without a routing reason.
 
@@ -18,4 +18,6 @@ Windows native PowerShell:
 
 For Antigravity, use the `antigravity` target. The installer installs the official Grok CLI if needed, starts `grok login`, and installs only the requested extension/plugin.
 
-Grok runs read-only. `grok_research` uses Grok CLI Web research and is not a guaranteed dedicated X Search API. Image and video generation are not exposed by this plugin.
+Grok 4.5 defaults to `high` reasoning effort. Before calling `grok_generate_image` or `grok_generate_video`, use the host's structured question UI to confirm missing model/quality and output settings. Confirm image quality/model, resolution, and aspect ratio; confirm video model/quality and resolution, duration, and aspect ratio. Pass `confirmed_settings: true` only after the user supplies, approves, or delegates them. Do not repeat settings already supplied. `grok-imagine-video-1.5` and 1080p require a source image.
+
+Repository inspection stays read-only; only generated media files may be created through Grok Build's bundled Imagine tools. `grok_research` is not a guaranteed dedicated X Search API.
