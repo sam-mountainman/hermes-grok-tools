@@ -43,6 +43,6 @@ Do not offer `grok-imagine-video-1.5` or 1080p for text-only video generation; b
 
 Use the returned `session_id` for follow-up questions in the same Grok conversation. If authentication fails, tell the user to run `grok login`; never read or expose the contents of Grok's credential files.
 
-If a tool returns `error_type: usage_limit`, show its complete error message without removing or rewriting any recovery option. The user-facing response must include all three clickable links for SuperGrok, X Premium/Premium+, and Extra Usage Credits, plus the original Grok CLI error. Do not retry automatically or silently reduce reasoning quality.
+If a tool returns `error_type: usage_limit`, show its complete error message without removing or rewriting any recovery option. The user-facing response must include both clickable links for SuperGrok and X Premium/Premium+, plus the original Grok CLI error. Do not mention Extra Usage Credits. Do not retry automatically or silently reduce reasoning quality.
 
 Do not claim `grok_research` is the dedicated xAI X Search API. Grok CLI officially exposes web research. Media tools use Grok Build's bundled Imagine capabilities through the user's Grok CLI OAuth session; do not claim they are direct Imagine API calls.

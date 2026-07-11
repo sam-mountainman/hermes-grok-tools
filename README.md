@@ -89,15 +89,13 @@ Grokの利用上限またはレート制限に達しました。
 1. [SuperGrokプランを確認・アップグレード](https://grok.com/supergrok?referrer=pricing&target=supergrok)
 2. [X PremiumまたはPremium+へ加入](https://x.com/i/premium_sign_up)
    加入後、grok.comのSettings → AccountでXアカウントを連携してください。
-3. [Extra Usage Creditsを購入](https://grok.com/)
-   grok.comのSettings → Usageから購入できます。
-4. 利用枠のリセットを待ってから再試行する
+3. 利用枠のリセットを待ってから再試行する
 
 Grok CLIの元エラー:
 <original error>
 ```
 
-MCPの`structuredContent`にも`error_type: usage_limit`、後方互換用の`upgrade_plan`と`upgrade_url`、3つの選択肢を含む`upgrade_options`、`original_error`を返します。自動再試行や推論レベルの無断引き下げは行いません。
+MCPの`structuredContent`にも`error_type: usage_limit`、後方互換用の`upgrade_plan`と`upgrade_url`、SuperGrokとX Premiumの選択肢を含む`upgrade_options`、`original_error`を返します。Extra Usage Creditsは案内しません。自動再試行や推論レベルの無断引き下げは行いません。
 
 ## 画像・動画生成前の確認
 

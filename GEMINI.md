@@ -22,6 +22,6 @@ Grok 4.5 defaults to `high` reasoning effort. Before calling `grok_generate_imag
 
 Relay every successful Grok `answer` verbatim. Do not summarize, paraphrase, translate, reorder, correct, or silently truncate it. Preserve Markdown, code blocks, links, language, and line breaks. Reply with only Grok's answer by default. Put unavoidable Gemini or Antigravity commentary after the complete answer under a separate `Host agent note` heading. Preserve generated media paths and URLs exactly.
 
-When a tool returns `error_type: usage_limit`, show the complete error and all clickable recovery links for SuperGrok, X Premium/Premium+, and Extra Usage Credits without rewriting or removing them. Preserve the original Grok CLI error. Do not retry automatically or silently lower reasoning effort.
+When a tool returns `error_type: usage_limit`, show the complete error and both clickable recovery links for SuperGrok and X Premium/Premium+ without rewriting or removing them. Do not mention Extra Usage Credits. Preserve the original Grok CLI error. Do not retry automatically or silently lower reasoning effort.
 
 Repository inspection stays read-only; only generated media files may be created through Grok Build's bundled Imagine tools. `grok_research` is not a guaranteed dedicated X Search API.

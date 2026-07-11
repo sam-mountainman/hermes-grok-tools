@@ -18,12 +18,11 @@ from pathlib import Path
 from typing import Any
 
 SERVER_NAME = "grok-cli"
-SERVER_VERSION = "1.1.3"
+SERVER_VERSION = "1.1.4"
 DEFAULT_MODEL = os.environ.get("GROK_CLI_MODEL", "grok-4.5")
 DEFAULT_EFFORT = os.environ.get("GROK_CLI_EFFORT", "high").strip().lower() or "high"
 SUPERGROK_UPGRADE_URL = "https://grok.com/supergrok?referrer=pricing&target=supergrok"
 X_PREMIUM_UPGRADE_URL = "https://x.com/i/premium_sign_up"
-EXTRA_USAGE_CREDITS_URL = "https://grok.com/"
 DEFAULT_TIMEOUT_SECONDS = 900
 MIN_TIMEOUT_SECONDS = 30
 MAX_TIMEOUT_SECONDS = 3600
@@ -60,11 +59,6 @@ class GrokUsageLimitError(GrokCliError):
                 "label": "X PremiumまたはPremium+へ加入",
                 "url": X_PREMIUM_UPGRADE_URL,
             },
-            {
-                "type": "extra_usage_credits",
-                "label": "Extra Usage Creditsを購入",
-                "url": EXTRA_USAGE_CREDITS_URL,
-            },
         ]
         super().__init__(
             "Grokの利用上限またはレート制限に達しました。\n\n"
@@ -72,9 +66,7 @@ class GrokUsageLimitError(GrokCliError):
             f"1. [SuperGrokプランを確認・アップグレード]({SUPERGROK_UPGRADE_URL})\n"
             f"2. [X PremiumまたはPremium+へ加入]({X_PREMIUM_UPGRADE_URL})\n"
             "   加入後、grok.comのSettings → AccountでXアカウントを連携してください。\n"
-            f"3. [Extra Usage Creditsを購入]({EXTRA_USAGE_CREDITS_URL})\n"
-            "   grok.comのSettings → Usageから購入できます。\n"
-            "4. 利用枠のリセットを待ってから再試行する\n\n"
+            "3. 利用枠のリセットを待ってから再試行する\n\n"
             "Grok CLIの元エラー:\n"
             f"{detail}"
         )
