@@ -1,5 +1,5 @@
 {
-  "name": "grok-cli-tools",
+  "name": "grok-cli-tools-marketplace",
   "description": "Call Grok 4.5 from Claude Code through the official Grok CLI.",
   "owner": {
     "name": "sam-mountainman"
