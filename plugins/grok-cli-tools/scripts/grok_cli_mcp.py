@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 SERVER_NAME = "grok-cli"
-SERVER_VERSION = "1.2.2"
+SERVER_VERSION = "1.2.3"
 DEFAULT_MODEL = os.environ.get("GROK_CLI_MODEL", "grok-4.5")
 DEFAULT_EFFORT = os.environ.get("GROK_CLI_EFFORT", "high").strip().lower() or "high"
 SUPERGROK_UPGRADE_URL = "https://grok.com/supergrok?referrer=pricing&target=supergrok"
@@ -70,6 +70,9 @@ class GrokUsageLimitError(GrokCliError):
             "コマンドはユーザー自身で実行する必要はありません。"
             "表示されたブラウザでOAuth認証だけ完了してください。\n"
             "認証後、AIエージェントが同じ依頼を一度だけ再試行します。\n"
+            "それでも同じ制限が出る場合は、現在のAIエージェントアプリを完全終了して"
+            "再起動してください。Codexでは再起動後にこのタスクを開き、"
+            "「再試行して」と伝えてください。\n"
             "契約が有効で利用枠が残っている場合、別のプランを重ねて購入する必要はありません。\n\n"
             "利用を続ける方法:\n\n"
             f"1. [SuperGrokプランを確認・アップグレード]({SUPERGROK_UPGRADE_URL})\n"
@@ -886,6 +889,12 @@ def _handle_request(message: dict[str, Any]) -> dict[str, Any] | None:
                             "requires_browser_interaction": True,
                             "retry_after_login": True,
                             "do_not_purchase_again_when_plan_is_active_and_usage_remains": True,
+                        },
+                        "host_restart_fallback": {
+                            "recommended_after_reauthentication_retry_fails": True,
+                            "automatic_restart": False,
+                            "reason": "An AI agent cannot safely terminate its own host and continue the same request.",
+                            "codex_instructions": "Fully quit and reopen Codex, reopen the same task, then ask the agent to retry.",
                         },
                         "original_error": exc.detail,
                     }

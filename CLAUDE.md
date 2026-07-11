@@ -24,4 +24,6 @@ When a tool returns `error_type: usage_limit`, show the complete error and both 
 
 If the user upgraded or changed plans after the current CLI login, or shows an active paid plan with remaining usage, run `grok logout` and then `grok login` in the host terminal before recommending another purchase. Tell the user to complete browser or device-code authentication, then retry the original Grok request once. Do not log out solely because of an ambiguous 429.
 
+If the retry still returns the same usage limit, tell the user to fully quit and restart Claude Code, then retry once when the conversation resumes. Never automatically terminate or relaunch the host because the active agent cannot reliably continue afterward.
+
 Repository inspection stays read-only; only generated media files may be created through Grok Build's bundled Imagine tools. This plugin does not claim dedicated X Search.

@@ -36,7 +36,7 @@ def test_initialize_response_shape():
     )
     assert response["id"] == 1
     assert response["result"]["serverInfo"]["name"] == "grok-cli"
-    assert response["result"]["serverInfo"]["version"] == "1.2.2"
+    assert response["result"]["serverInfo"]["version"] == "1.2.3"
     assert "tools" in response["result"]["capabilities"]
 
 
@@ -225,6 +225,8 @@ def test_usage_limit_error_includes_all_recovery_links():
     assert "そのことをAIエージェントに伝えてください" in message
     assert "コマンドはユーザー自身で実行する必要はありません" in message
     assert "OAuth認証だけ完了してください" in message
+    assert "AIエージェントアプリを完全終了して再起動" in message
+    assert "再試行して" in message
     assert "別のプランを重ねて購入する必要はありません" in message
     assert "Extra Usage Credits" not in message
     assert "HTTP 429 rate limit exceeded" in message
@@ -277,6 +279,10 @@ def test_cli_usage_limit_returns_structured_upgrade_guidance(monkeypatch, tmp_pa
         reauthentication["do_not_purchase_again_when_plan_is_active_and_usage_remains"]
         is True
     )
+    restart = result["structuredContent"]["host_restart_fallback"]
+    assert restart["recommended_after_reauthentication_retry_fails"] is True
+    assert restart["automatic_restart"] is False
+    assert "reopen Codex" in restart["codex_instructions"]
     assert result["structuredContent"]["original_error"] == "HTTP 429: rate limit exceeded"
 
 

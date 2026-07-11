@@ -93,6 +93,8 @@ grok login
 
 コマンドはユーザー自身で実行する必要はありません。表示されたブラウザでOAuth認証だけ完了してください。認証後、AIエージェントが同じ依頼を一度だけ再試行します。
 
+再認証後も同じ制限が出る場合は、現在のAIエージェントアプリを完全終了して再起動してください。Codexでは再起動後に同じタスクを開き、「再試行して」と伝えます。AI自身がホストを終了すると処理を継続できないため、ホストの強制終了・自動再起動は行いません。
+
 利用を続ける方法:
 
 1. [SuperGrokプランを確認・アップグレード](https://grok.com/supergrok?referrer=pricing&target=supergrok)
@@ -104,7 +106,7 @@ Grok CLIの元エラー:
 <original error>
 ```
 
-MCPの`structuredContent`にも`error_type: usage_limit`、後方互換用の`upgrade_plan`と`upgrade_url`、SuperGrokとX Premiumの選択肢を含む`upgrade_options`、再認証条件とコマンドを含む`reauthentication`、`original_error`を返します。
+MCPの`structuredContent`にも`error_type: usage_limit`、後方互換用の`upgrade_plan`と`upgrade_url`、SuperGrokとX Premiumの選択肢を含む`upgrade_options`、再認証条件とコマンドを含む`reauthentication`、再認証後も失敗した場合の`host_restart_fallback`、`original_error`を返します。
 
 ホストAIは、ユーザーが現在のCLIログイン後にプランを変更したと伝えた場合、または有効な有料プランと利用枠の残りを確認できた場合、追加購入を勧める前にホストのターミナルで`grok logout`、`grok login`を順番に実行します。ブラウザ認証完了後だけ元の依頼を一度再試行します。曖昧なHTTP 429だけを根拠に勝手にログアウトはしません。Extra Usage Creditsは案内せず、推論レベルも無断で下げません。
 

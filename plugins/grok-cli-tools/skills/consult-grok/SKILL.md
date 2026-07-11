@@ -47,4 +47,6 @@ If a tool returns `error_type: usage_limit`, show its complete error message wit
 
 Treat a recent plan change as an authentication-refresh case before recommending another purchase. If the user says they upgraded or changed plans after the current CLI login, or shows an active paid plan with remaining usage, use the host terminal to run `grok logout` and then `grok login`. Explain that browser or device-code interaction is required. After the user completes login, retry the original Grok request once. Do not run logout solely because of an ambiguous 429, and do not tell a user with an active plan and remaining usage to purchase the same plan again.
 
+If the one retry after successful reauthentication returns the same usage limit, tell the user to fully quit and restart the current AI agent host. For Codex, tell them to reopen the same task and ask to retry. On the resumed task, retry the original Grok request once. Never terminate or relaunch the host automatically: doing so would kill the active agent before it can confirm completion or preserve a reliable continuation.
+
 Do not claim `grok_research` is the dedicated xAI X Search API. Grok CLI officially exposes web research. Media tools use Grok Build's bundled Imagine capabilities through the user's Grok CLI OAuth session; do not claim they are direct Imagine API calls.
