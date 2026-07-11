@@ -36,7 +36,7 @@ def test_initialize_response_shape():
     )
     assert response["id"] == 1
     assert response["result"]["serverInfo"]["name"] == "grok-cli"
-    assert response["result"]["serverInfo"]["version"] == "1.2.0"
+    assert response["result"]["serverInfo"]["version"] == "1.2.1"
     assert "tools" in response["result"]["capabilities"]
 
 
@@ -220,6 +220,9 @@ def test_usage_limit_error_includes_all_recovery_links():
     assert grok_cli_mcp.SUPERGROK_UPGRADE_URL in message
     assert grok_cli_mcp.X_PREMIUM_UPGRADE_URL in message
     assert "Settings → Account" in message
+    assert "grok logout" in message
+    assert "grok login" in message
+    assert "別のプランを重ねて購入する必要はありません" in message
     assert "Extra Usage Credits" not in message
     assert "HTTP 429 rate limit exceeded" in message
 
@@ -263,6 +266,14 @@ def test_cli_usage_limit_returns_structured_upgrade_guidance(monkeypatch, tmp_pa
         "x_premium",
     ]
     assert options[1]["url"] == grok_cli_mcp.X_PREMIUM_UPGRADE_URL
+    reauthentication = result["structuredContent"]["reauthentication"]
+    assert reauthentication["commands"] == ["grok logout", "grok login"]
+    assert reauthentication["requires_browser_interaction"] is True
+    assert reauthentication["retry_after_login"] is True
+    assert (
+        reauthentication["do_not_purchase_again_when_plan_is_active_and_usage_remains"]
+        is True
+    )
     assert result["structuredContent"]["original_error"] == "HTTP 429: rate limit exceeded"
 
 

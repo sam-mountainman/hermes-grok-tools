@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 SERVER_NAME = "grok-cli"
-SERVER_VERSION = "1.2.0"
+SERVER_VERSION = "1.2.1"
 DEFAULT_MODEL = os.environ.get("GROK_CLI_MODEL", "grok-4.5")
 DEFAULT_EFFORT = os.environ.get("GROK_CLI_EFFORT", "high").strip().lower() or "high"
 SUPERGROK_UPGRADE_URL = "https://grok.com/supergrok?referrer=pricing&target=supergrok"
@@ -59,6 +59,14 @@ class GrokUsageLimitError(GrokCliError):
         ]
         super().__init__(
             "Grokの利用上限またはレート制限に達しました。\n\n"
+            "最近、無料プランから有料プランへ変更した場合:\n\n"
+            "追加購入する前に、Grok CLIのOAuthセッションを更新してください。\n\n"
+            "```bash\n"
+            "grok logout\n"
+            "grok login\n"
+            "```\n\n"
+            "ブラウザ認証を完了してから、同じ依頼を一度だけ再試行してください。\n"
+            "契約が有効で利用枠が残っている場合、別のプランを重ねて購入する必要はありません。\n\n"
             "利用を続ける方法:\n\n"
             f"1. [SuperGrokプランを確認・アップグレード]({SUPERGROK_UPGRADE_URL})\n"
             f"2. [X PremiumまたはPremium+へ加入]({X_PREMIUM_UPGRADE_URL})\n"
@@ -868,6 +876,13 @@ def _handle_request(message: dict[str, Any]) -> dict[str, Any] | None:
                         "upgrade_plan": "SuperGrok",
                         "upgrade_url": exc.upgrade_url,
                         "upgrade_options": exc.upgrade_options,
+                        "reauthentication": {
+                            "recommended_when": "The user upgraded or changed a paid plan after the current Grok CLI login.",
+                            "commands": ["grok logout", "grok login"],
+                            "requires_browser_interaction": True,
+                            "retry_after_login": True,
+                            "do_not_purchase_again_when_plan_is_active_and_usage_remains": True,
+                        },
                         "original_error": exc.detail,
                     }
                 )

@@ -24,4 +24,6 @@ Relay every successful Grok `answer` verbatim. Do not summarize, paraphrase, tra
 
 When a tool returns `error_type: usage_limit`, show the complete error and both clickable recovery links for SuperGrok and X Premium/Premium+ without rewriting or removing them. Do not mention Extra Usage Credits. Preserve the original Grok CLI error. Do not retry automatically or silently lower reasoning effort.
 
+If the user upgraded or changed plans after the current CLI login, or shows an active paid plan with remaining usage, run `grok logout` and then `grok login` in the host terminal before recommending another purchase. Tell the user to complete browser or device-code authentication, then retry the original Grok request once. Do not log out solely because of an ambiguous 429.
+
 Repository inspection stays read-only; only generated media files may be created through Grok Build's bundled Imagine tools. `grok_research` is not a guaranteed dedicated X Search API.

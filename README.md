@@ -84,6 +84,15 @@ Grok CLIが無料枠、週間利用枠、クレジット、またはHTTP 429の�
 ```text
 Grokの利用上限またはレート制限に達しました。
 
+最近、無料プランから有料プランへ変更した場合:
+
+追加購入する前に、CLI認証を更新してください。
+
+grok logout
+grok login
+
+ブラウザ認証後、同じ依頼を一度だけ再試行してください。
+
 利用を続ける方法:
 
 1. [SuperGrokプランを確認・アップグレード](https://grok.com/supergrok?referrer=pricing&target=supergrok)
@@ -95,7 +104,9 @@ Grok CLIの元エラー:
 <original error>
 ```
 
-MCPの`structuredContent`にも`error_type: usage_limit`、後方互換用の`upgrade_plan`と`upgrade_url`、SuperGrokとX Premiumの選択肢を含む`upgrade_options`、`original_error`を返します。Extra Usage Creditsは案内しません。自動再試行や推論レベルの無断引き下げは行いません。
+MCPの`structuredContent`にも`error_type: usage_limit`、後方互換用の`upgrade_plan`と`upgrade_url`、SuperGrokとX Premiumの選択肢を含む`upgrade_options`、再認証条件とコマンドを含む`reauthentication`、`original_error`を返します。
+
+ホストAIは、ユーザーが現在のCLIログイン後にプランを変更したと伝えた場合、または有効な有料プランと利用枠の残りを確認できた場合、追加購入を勧める前にホストのターミナルで`grok logout`、`grok login`を順番に実行します。ブラウザ認証完了後だけ元の依頼を一度再試行します。曖昧なHTTP 429だけを根拠に勝手にログアウトはしません。Extra Usage Creditsは案内せず、推論レベルも無断で下げません。
 
 ## 画像・動画生成前の確認
 
@@ -122,6 +133,15 @@ MCPの`structuredContent`にも`error_type: usage_limit`、後方互換用の`up
 ```bash
 grok login
 ```
+
+無料プランから有料プランへ変更した後もCLIが以前の制限を返す場合は、CLIのOAuthセッションを更新します。
+
+```bash
+grok logout
+grok login
+```
+
+新規チャットの作成だけではCLIの認証状態は更新されません。
 
 ブラウザを使えない環境:
 
