@@ -58,7 +58,7 @@ Windows native:
 | `grok_plan` | repository を読み取り専用で調べ、実装計画を作成 |
 | `grok_review` | repository と `git diff` を読み取り専用でレビュー |
 | `grok_generate_image` | Grok Imagineで画像生成・画像編集 |
-| `grok_generate_video` | Grok Imagineでtext-to-video・image-to-video生成 |
+| `grok_generate_video` | Grok Imagineで6秒または10秒の動画を生成 |
 
 `grok_ask`などは`session_id`を返します。続きの質問で同じ`session_id`を渡すと、同じGrokセッションを再開できます。既定モデルは`grok-4.5`、既定推論レベルは公式既定と同じ`high`です。Grok 4.5で指定できる推論レベルは`low`、`medium`、`high`です。
 
@@ -109,11 +109,11 @@ MCPの`structuredContent`にも`error_type: usage_limit`、後方互換用の`up
 
 動画で確認する項目:
 
-- 品質・モデル・解像度: text-to-videoは`grok-imagine-video`の720pまたは480p
-- 秒数: 1〜15秒。質問候補は5秒、10秒、15秒
+- 品質・解像度: 高品質/HD 720p、または標準480p。動画モデルはGrok CLIが自動選択
+- 秒数: 6秒、または10秒
 - 縦横比: 16:9、9:16、1:1など
 
-元画像があるimage-to-videoでは、`grok-imagine-video-1.5`の1080pも選択できます。1.5と1080pはtext-to-videoでは使えません。確認後だけtoolへ`confirmed_settings: true`を渡すため、設定未確認のまま生成枠を消費しません。
+公式Grok CLIの同梱ツールには直接のtext-to-videoがないため、テキストだけの依頼では最初の静止画を作り、`image_to_video`で動かします。CLIが受け付ける秒数は6秒または10秒です。確認後だけtoolへ`confirmed_settings: true`を渡すため、設定未確認のまま生成枠を消費しません。
 
 ## 認証
 

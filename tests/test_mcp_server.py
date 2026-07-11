@@ -36,7 +36,7 @@ def test_initialize_response_shape():
     )
     assert response["id"] == 1
     assert response["result"]["serverInfo"]["name"] == "grok-cli"
-    assert response["result"]["serverInfo"]["version"] == "1.1.4"
+    assert response["result"]["serverInfo"]["version"] == "1.2.0"
     assert "tools" in response["result"]["capabilities"]
 
 
@@ -318,6 +318,11 @@ def test_media_tool_schemas_require_confirmed_output_settings():
         "duration",
         "aspect_ratio",
     } <= video_required
+    video_properties = grok_cli_mcp.TOOLS["grok_generate_video"]["inputSchema"][
+        "properties"
+    ]
+    assert video_properties["duration"]["enum"] == [6, 10]
+    assert video_properties["resolution"]["enum"] == ["480p", "720p"]
 
 
 def test_image_generation_passes_confirmed_settings(monkeypatch):
@@ -344,7 +349,7 @@ def test_image_generation_passes_confirmed_settings(monkeypatch):
     assert result["media"]["model"] == "grok-imagine-image-quality"
 
 
-def test_video_generation_rejects_1080p_text_to_video(monkeypatch):
+def test_video_generation_rejects_unsupported_cli_settings(monkeypatch):
     monkeypatch.setattr(
         grok_cli_mcp,
         "_run_grok",
@@ -362,16 +367,17 @@ def test_video_generation_rejects_1080p_text_to_video(monkeypatch):
             }
         )
     except grok_cli_mcp.GrokCliError as exc:
-        assert "1080p requires" in str(exc)
+        assert "480p or 720p" in str(exc)
     else:
         raise AssertionError("Expected GrokCliError")
 
 
-def test_video_generation_uses_quality_model_with_source(monkeypatch):
+def test_video_generation_uses_single_clip_workflow_with_source(monkeypatch):
     captured = {}
 
     def fake_run(prompt, args):
         captured["prompt"] = prompt
+        captured["args"] = args
         return {"ok": True, "answer": "/tmp/video.mp4"}
 
     monkeypatch.setattr(grok_cli_mcp, "_run_grok", fake_run)
@@ -380,13 +386,36 @@ def test_video_generation_uses_quality_model_with_source(monkeypatch):
             "prompt": "Animate the clouds",
             "confirmed_settings": True,
             "quality": "high",
-            "resolution": "1080p",
+            "resolution": "720p",
             "duration": 10,
             "aspect_ratio": "16:9",
             "source_image_path": "/tmp/source.png",
         }
     )
 
-    assert "grok-imagine-video-1.5" in captured["prompt"]
-    assert "Duration: 10 seconds" in captured["prompt"]
-    assert result["media"]["resolution"] == "1080p"
+    assert "image_to_video at exactly 10 seconds" in captured["prompt"]
+    assert "/tmp/source.png" in captured["prompt"]
+    assert result["media"]["resolution"] == "720p"
+
+
+def test_video_generation_rejects_old_15_second_duration(monkeypatch):
+    monkeypatch.setattr(
+        grok_cli_mcp,
+        "_run_grok",
+        lambda prompt, args: {"ok": True, "answer": "/tmp/video.mp4"},
+    )
+    try:
+        grok_cli_mcp.tool_generate_video(
+            {
+                "prompt": "A mountain flyover",
+                "confirmed_settings": True,
+                "quality": "standard",
+                "resolution": "720p",
+                "duration": 15,
+                "aspect_ratio": "16:9",
+            }
+        )
+    except grok_cli_mcp.GrokCliError as exc:
+        assert "6 or 10 seconds" in str(exc)
+    else:
+        raise AssertionError("Expected GrokCliError")

@@ -18,7 +18,7 @@ Windows native PowerShell:
 
 For Antigravity, use the `antigravity` target. The installer installs the official Grok CLI if needed, starts `grok login`, and installs only the requested extension/plugin.
 
-Grok 4.5 defaults to `high` reasoning effort. Before calling `grok_generate_image` or `grok_generate_video`, use the host's structured question UI to confirm missing model/quality and output settings. Confirm image quality/model, resolution, and aspect ratio; confirm video model/quality and resolution, duration, and aspect ratio. Pass `confirmed_settings: true` only after the user supplies, approves, or delegates them. Do not repeat settings already supplied. `grok-imagine-video-1.5` and 1080p require a source image.
+Grok 4.5 defaults to `high` reasoning effort. Before calling `grok_generate_image` or `grok_generate_video`, use the host's structured question UI to confirm missing settings. Confirm image quality/model, resolution, and aspect ratio; confirm video quality, 480p/720p resolution, 6/10-second duration, and aspect ratio. Pass `confirmed_settings: true` only after the user supplies, approves, or delegates them. Do not repeat settings already supplied. Grok CLI creates a source image before animation when needed.
 
 Relay every successful Grok `answer` verbatim. Do not summarize, paraphrase, translate, reorder, correct, or silently truncate it. Preserve Markdown, code blocks, links, language, and line breaks. Reply with only Grok's answer by default. Put unavoidable Gemini or Antigravity commentary after the complete answer under a separate `Host agent note` heading. Preserve generated media paths and URLs exactly.
 

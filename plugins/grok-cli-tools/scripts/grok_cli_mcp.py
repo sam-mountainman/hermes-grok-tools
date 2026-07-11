@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 SERVER_NAME = "grok-cli"
-SERVER_VERSION = "1.1.4"
+SERVER_VERSION = "1.2.0"
 DEFAULT_MODEL = os.environ.get("GROK_CLI_MODEL", "grok-4.5")
 DEFAULT_EFFORT = os.environ.get("GROK_CLI_EFFORT", "high").strip().lower() or "high"
 SUPERGROK_UPGRADE_URL = "https://grok.com/supergrok?referrer=pricing&target=supergrok"
@@ -31,12 +31,9 @@ IMAGE_MODELS = {
     "standard": "grok-imagine-image",
     "high": "grok-imagine-image-quality",
 }
-VIDEO_MODELS = {
-    "standard": "grok-imagine-video",
-    "high": "grok-imagine-video-1.5",
-}
 IMAGE_RESOLUTIONS = {"1k", "2k"}
-VIDEO_RESOLUTIONS = {"480p", "720p", "1080p"}
+VIDEO_RESOLUTIONS = {"480p", "720p"}
+VIDEO_DURATIONS = {6, 10}
 ASPECT_RATIOS = {"1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3"}
 
 
@@ -601,52 +598,49 @@ def tool_generate_video(args: dict[str, Any]) -> dict[str, Any]:
         tool_name="grok_generate_video",
         fields=["quality", "resolution", "duration", "aspect_ratio"],
     )
-    quality, media_model = _media_model(settings, VIDEO_MODELS)
+    quality = _normalized_quality(settings)
     resolution = str(settings["resolution"]).strip().lower()
     if resolution not in VIDEO_RESOLUTIONS:
-        raise GrokCliError("resolution must be 480p, 720p, or 1080p for video generation.")
+        raise GrokCliError("resolution must be 480p or 720p for Grok CLI video generation.")
     try:
         duration = int(settings["duration"])
     except (TypeError, ValueError) as exc:
-        raise GrokCliError("duration must be an integer from 1 to 15 seconds.") from exc
-    if not 1 <= duration <= 15:
-        raise GrokCliError("duration must be from 1 to 15 seconds.")
+        raise GrokCliError("duration must be 6 or 10 seconds.") from exc
+    if duration not in VIDEO_DURATIONS:
+        raise GrokCliError("duration must be 6 or 10 seconds for Grok CLI video generation.")
     aspect_ratio = _validated_aspect_ratio(settings)
     request = str(settings.get("prompt") or "").strip()
     if not request:
         raise GrokCliError("prompt must not be empty for video generation.")
     source_path = str(settings.get("source_image_path") or "").strip()
-    if media_model == "grok-imagine-video-1.5" and not source_path:
-        raise GrokCliError(
-            "grok-imagine-video-1.5 requires source_image_path. For text-to-video, use "
-            "quality=standard and grok-imagine-video."
-        )
-    if resolution == "1080p" and media_model != "grok-imagine-video-1.5":
-        raise GrokCliError(
-            "1080p requires grok-imagine-video-1.5 with source_image_path. "
-            "Use 720p or 480p for text-to-video."
-        )
     source_instruction = (
-        f"Animate the source image at this absolute local path: {source_path}\n"
+        f"Use this image as the source image: {source_path}\n"
         if source_path
-        else "Generate a new video from text.\n"
+        else "Create the required source image from the text request before animation.\n"
     )
+
+    generation_instruction = (
+        f"Create exactly one finished {duration}-second video. The bundled CLI has no direct "
+        "text-to-video tool: create a source image first when none was supplied, then animate "
+        f"it with image_to_video at exactly {duration} seconds. Return the saved absolute MP4 "
+        "path."
+    )
+
     prompt = (
-        "Use Grok Build's bundled Imagine video-generation tool now. Do not merely describe a "
-        "video. Generate exactly one video, save it through the built-in media tool, and return "
-        "the saved absolute file path. Do not edit repository source files.\n\n"
+        "Use Grok Build's bundled Imagine workflow now. Do not merely describe a video. Do not "
+        "edit repository source files.\n\n"
+        f"{generation_instruction}\n"
         f"{source_instruction}"
-        f"Media model: {media_model}\n"
-        f"Quality: {quality}\n"
+        f"Quality preference: {quality}\n"
         f"Resolution: {resolution}\n"
-        f"Duration: {duration} seconds\n"
+        f"Requested finished duration: {duration} seconds\n"
         f"Aspect ratio: {aspect_ratio}\n"
         f"Generation request:\n{request}"
     )
     result = _run_grok(prompt, settings)
     result["media"] = {
         "type": "video",
-        "model": media_model,
+        "model": "Grok CLI automatic image_to_video model",
         "quality": quality,
         "resolution": resolution,
         "duration": duration,
@@ -762,7 +756,7 @@ TOOLS: dict[str, dict[str, Any]] = {
         "handler": tool_generate_image,
     },
     "grok_generate_video": {
-        "description": "Generate one text-to-video or image-to-video result with Grok Imagine through the OAuth-authenticated Grok CLI. Before calling, use structured AskUserQuestion/request_user_input to confirm model/quality, resolution, duration, and aspect ratio; then set confirmed_settings=true. grok-imagine-video-1.5 and 1080p require source_image_path.",
+        "description": "Generate one 6- or 10-second Grok Imagine clip through the OAuth-authenticated Grok CLI. The CLI creates a source image before animation when needed. Before calling, use structured AskUserQuestion/request_user_input to confirm quality, 480p/720p resolution, 6/10-second duration, and aspect ratio; then set confirmed_settings=true.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -772,22 +766,18 @@ TOOLS: dict[str, dict[str, Any]] = {
                     "description": "True only after the user supplied, approved, or delegated all generation settings.",
                 },
                 "quality": {"type": "string", "enum": ["standard", "high"]},
-                "media_model": {
-                    "type": "string",
-                    "enum": ["grok-imagine-video", "grok-imagine-video-1.5"],
-                },
                 "resolution": {
                     "type": "string",
-                    "enum": ["480p", "720p", "1080p"],
+                    "enum": ["480p", "720p"],
                 },
-                "duration": {"type": "integer", "minimum": 1, "maximum": 15},
+                "duration": {"type": "integer", "enum": [6, 10]},
                 "aspect_ratio": {
                     "type": "string",
                     "enum": ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3"],
                 },
                 "source_image_path": {
                     "type": "string",
-                    "description": "Optional absolute local path for image-to-video generation.",
+                    "description": "Optional absolute local path for the source image.",
                 },
                 **COMMON_PROPERTIES,
             },
