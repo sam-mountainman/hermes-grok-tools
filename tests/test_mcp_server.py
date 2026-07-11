@@ -36,7 +36,7 @@ def test_initialize_response_shape():
     )
     assert response["id"] == 1
     assert response["result"]["serverInfo"]["name"] == "grok-cli"
-    assert response["result"]["serverInfo"]["version"] == "1.1.2"
+    assert response["result"]["serverInfo"]["version"] == "1.1.3"
     assert "tools" in response["result"]["capabilities"]
 
 
@@ -214,11 +214,14 @@ def test_usage_limit_detection_matches_quota_errors_only():
     assert not grok_cli_mcp._is_usage_limit_error("Context length limit exceeded")
 
 
-def test_usage_limit_error_includes_supergrok_upgrade_link():
+def test_usage_limit_error_includes_all_recovery_links():
     error = grok_cli_mcp.GrokUsageLimitError("HTTP 429 rate limit exceeded")
     message = str(error)
-    assert "SuperGrokプランへアップグレードしてください" in message
     assert grok_cli_mcp.SUPERGROK_UPGRADE_URL in message
+    assert grok_cli_mcp.X_PREMIUM_UPGRADE_URL in message
+    assert grok_cli_mcp.EXTRA_USAGE_CREDITS_URL in message
+    assert "Settings → Account" in message
+    assert "Settings → Usage" in message
     assert "HTTP 429 rate limit exceeded" in message
 
 
@@ -255,6 +258,14 @@ def test_cli_usage_limit_returns_structured_upgrade_guidance(monkeypatch, tmp_pa
         result["structuredContent"]["upgrade_url"]
         == grok_cli_mcp.SUPERGROK_UPGRADE_URL
     )
+    options = result["structuredContent"]["upgrade_options"]
+    assert [option["type"] for option in options] == [
+        "supergrok",
+        "x_premium",
+        "extra_usage_credits",
+    ]
+    assert options[1]["url"] == grok_cli_mcp.X_PREMIUM_UPGRADE_URL
+    assert options[2]["url"] == grok_cli_mcp.EXTRA_USAGE_CREDITS_URL
     assert result["structuredContent"]["original_error"] == "HTTP 429: rate limit exceeded"
 
 
