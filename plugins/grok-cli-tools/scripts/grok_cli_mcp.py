@@ -18,9 +18,10 @@ from pathlib import Path
 from typing import Any
 
 SERVER_NAME = "grok-cli"
-SERVER_VERSION = "1.1.1"
+SERVER_VERSION = "1.1.2"
 DEFAULT_MODEL = os.environ.get("GROK_CLI_MODEL", "grok-4.5")
 DEFAULT_EFFORT = os.environ.get("GROK_CLI_EFFORT", "high").strip().lower() or "high"
+SUPERGROK_UPGRADE_URL = "https://grok.com/supergrok?referrer=pricing&target=supergrok"
 DEFAULT_TIMEOUT_SECONDS = 900
 MIN_TIMEOUT_SECONDS = 30
 MAX_TIMEOUT_SECONDS = 3600
@@ -40,6 +41,60 @@ ASPECT_RATIOS = {"1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3"}
 
 class GrokCliError(RuntimeError):
     pass
+
+
+class GrokUsageLimitError(GrokCliError):
+    def __init__(self, detail: str) -> None:
+        self.detail = detail
+        self.upgrade_url = SUPERGROK_UPGRADE_URL
+        super().__init__(
+            "Grokの利用上限またはレート制限に達しました。\n\n"
+            "利用を続けるには、SuperGrokプランへアップグレードしてください。\n"
+            f"[SuperGrokプランを確認・アップグレード]({self.upgrade_url})\n\n"
+            "利用枠のリセットを待ってから再試行することもできます。\n\n"
+            "Grok CLIの元エラー:\n"
+            f"{detail}"
+        )
+
+
+USAGE_LIMIT_MARKERS = (
+    "rate limit",
+    "rate_limit",
+    "rate-limit",
+    "usage limit",
+    "usage_limit",
+    "usage-limit",
+    "weekly limit",
+    "weekly_limit",
+    "daily limit",
+    "daily_limit",
+    "free tier limit",
+    "free_tier_limit",
+    "credit limit",
+    "credit_limit",
+    "quota exceeded",
+    "quota_exceeded",
+    "insufficient quota",
+    "insufficient_quota",
+    "insufficient credit",
+    "out of credit",
+    "credits exhausted",
+    "resource exhausted",
+    "resource_exhausted",
+    "free-usage paywall",
+    "free usage paywall",
+    "too many requests",
+)
+
+
+def _is_usage_limit_error(detail: str) -> bool:
+    normalized = detail.lower()
+    if any(marker in normalized for marker in USAGE_LIMIT_MARKERS):
+        return True
+    return any(
+        marker in normalized
+        for marker in ('"status":429', '"status": 429', "http 429", "status code 429")
+    )
 
 
 def _grok_home() -> Path:
@@ -350,6 +405,8 @@ def _run_grok(prompt: str, args: dict[str, Any]) -> dict[str, Any]:
     stderr = (completed.stderr or "").strip()
     if completed.returncode != 0:
         detail = stderr or stdout.strip() or f"exit code {completed.returncode}"
+        if _is_usage_limit_error(detail):
+            raise GrokUsageLimitError(detail)
         auth_help = ""
         if any(token in detail.lower() for token in ("auth", "login", "credential", "401")):
             auth_help = " Run `grok login` in a terminal, then retry."
@@ -798,11 +855,21 @@ def _handle_request(message: dict[str, Any]) -> dict[str, Any] | None:
                 },
             )
         except Exception as exc:
+            structured_error: dict[str, Any] = {"ok": False, "error": str(exc)}
+            if isinstance(exc, GrokUsageLimitError):
+                structured_error.update(
+                    {
+                        "error_type": "usage_limit",
+                        "upgrade_plan": "SuperGrok",
+                        "upgrade_url": exc.upgrade_url,
+                        "original_error": exc.detail,
+                    }
+                )
             return _response(
                 message_id,
                 {
                     "content": [{"type": "text", "text": str(exc)}],
-                    "structuredContent": {"ok": False, "error": str(exc)},
+                    "structuredContent": structured_error,
                     "isError": True,
                 },
             )

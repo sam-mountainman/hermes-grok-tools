@@ -36,7 +36,7 @@ def test_initialize_response_shape():
     )
     assert response["id"] == 1
     assert response["result"]["serverInfo"]["name"] == "grok-cli"
-    assert response["result"]["serverInfo"]["version"] == "1.1.1"
+    assert response["result"]["serverInfo"]["version"] == "1.1.2"
     assert "tools" in response["result"]["capabilities"]
 
 
@@ -196,6 +196,66 @@ def test_cli_auth_error_is_returned_as_mcp_tool_error(monkeypatch):
     )
     assert response["result"]["isError"] is True
     assert "grok login" in response["result"]["content"][0]["text"]
+
+
+def test_usage_limit_detection_matches_quota_errors_only():
+    for detail in (
+        "HTTP 429: Too Many Requests",
+        '{"error":{"type":"rate_limit_error"}}',
+        "Weekly limit reached",
+        "Free-usage paywall",
+        "Insufficient credits",
+        '{"error":{"code":"insufficient_quota"}}',
+        "RESOURCE_EXHAUSTED",
+    ):
+        assert grok_cli_mcp._is_usage_limit_error(detail)
+
+    assert not grok_cli_mcp._is_usage_limit_error("Authentication failed with 401")
+    assert not grok_cli_mcp._is_usage_limit_error("Context length limit exceeded")
+
+
+def test_usage_limit_error_includes_supergrok_upgrade_link():
+    error = grok_cli_mcp.GrokUsageLimitError("HTTP 429 rate limit exceeded")
+    message = str(error)
+    assert "SuperGrokプランへアップグレードしてください" in message
+    assert grok_cli_mcp.SUPERGROK_UPGRADE_URL in message
+    assert "HTTP 429 rate limit exceeded" in message
+
+
+def test_cli_usage_limit_returns_structured_upgrade_guidance(monkeypatch, tmp_path: Path):
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(
+            command,
+            1,
+            stdout="",
+            stderr="HTTP 429: rate limit exceeded",
+        )
+
+    monkeypatch.setattr(grok_cli_mcp, "_require_grok_bin", lambda: "/mock/grok")
+    monkeypatch.setattr(grok_cli_mcp.subprocess, "run", fake_run)
+
+    response = grok_cli_mcp._handle_request(
+        {
+            "jsonrpc": "2.0",
+            "id": 30,
+            "method": "tools/call",
+            "params": {
+                "name": "grok_ask",
+                "arguments": {"question": "Hello", "cwd": str(tmp_path)},
+            },
+        }
+    )
+
+    result = response["result"]
+    assert result["isError"] is True
+    assert grok_cli_mcp.SUPERGROK_UPGRADE_URL in result["content"][0]["text"]
+    assert result["structuredContent"]["error_type"] == "usage_limit"
+    assert result["structuredContent"]["upgrade_plan"] == "SuperGrok"
+    assert (
+        result["structuredContent"]["upgrade_url"]
+        == grok_cli_mcp.SUPERGROK_UPGRADE_URL
+    )
+    assert result["structuredContent"]["original_error"] == "HTTP 429: rate limit exceeded"
 
 
 def test_research_description_does_not_claim_dedicated_x_search():
