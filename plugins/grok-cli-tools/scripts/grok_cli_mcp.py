@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 SERVER_NAME = "grok-cli"
-SERVER_VERSION = "1.2.1"
+SERVER_VERSION = "1.2.2"
 DEFAULT_MODEL = os.environ.get("GROK_CLI_MODEL", "grok-4.5")
 DEFAULT_EFFORT = os.environ.get("GROK_CLI_EFFORT", "high").strip().lower() or "high"
 SUPERGROK_UPGRADE_URL = "https://grok.com/supergrok?referrer=pricing&target=supergrok"
@@ -59,13 +59,17 @@ class GrokUsageLimitError(GrokCliError):
         ]
         super().__init__(
             "Grokの利用上限またはレート制限に達しました。\n\n"
-            "最近、無料プランから有料プランへ変更した場合:\n\n"
-            "追加購入する前に、Grok CLIのOAuthセッションを更新してください。\n\n"
+            "最近、無料プランから有料プランへ変更した場合は、"
+            "そのことをAIエージェントに伝えてください。\n"
+            "AIエージェントが追加購入を案内する前に、次のコマンドを実行して"
+            "Grok CLIのOAuthセッションを更新します。\n\n"
             "```bash\n"
             "grok logout\n"
             "grok login\n"
             "```\n\n"
-            "ブラウザ認証を完了してから、同じ依頼を一度だけ再試行してください。\n"
+            "コマンドはユーザー自身で実行する必要はありません。"
+            "表示されたブラウザでOAuth認証だけ完了してください。\n"
+            "認証後、AIエージェントが同じ依頼を一度だけ再試行します。\n"
             "契約が有効で利用枠が残っている場合、別のプランを重ねて購入する必要はありません。\n\n"
             "利用を続ける方法:\n\n"
             f"1. [SuperGrokプランを確認・アップグレード]({SUPERGROK_UPGRADE_URL})\n"

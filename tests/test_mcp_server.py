@@ -36,7 +36,7 @@ def test_initialize_response_shape():
     )
     assert response["id"] == 1
     assert response["result"]["serverInfo"]["name"] == "grok-cli"
-    assert response["result"]["serverInfo"]["version"] == "1.2.1"
+    assert response["result"]["serverInfo"]["version"] == "1.2.2"
     assert "tools" in response["result"]["capabilities"]
 
 
@@ -222,6 +222,9 @@ def test_usage_limit_error_includes_all_recovery_links():
     assert "Settings → Account" in message
     assert "grok logout" in message
     assert "grok login" in message
+    assert "そのことをAIエージェントに伝えてください" in message
+    assert "コマンドはユーザー自身で実行する必要はありません" in message
+    assert "OAuth認証だけ完了してください" in message
     assert "別のプランを重ねて購入する必要はありません" in message
     assert "Extra Usage Credits" not in message
     assert "HTTP 429 rate limit exceeded" in message

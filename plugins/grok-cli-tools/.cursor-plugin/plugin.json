@@ -1,7 +1,7 @@
 {
   "name": "grok-cli-tools",
   "displayName": "Grok CLI Tools",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Relay Grok 4.5 answers verbatim at high reasoning effort and generate user-confirmed Grok Imagine media through the official Grok CLI.",
   "author": {
     "name": "sam-mountainman"
