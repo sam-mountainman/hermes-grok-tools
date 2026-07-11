@@ -77,6 +77,24 @@ Grokで10秒の動画を作って。
 
 プラグイン同梱の `consult-grok` skill は、ユーザーが Grok / Grok 4.5 を明示した場合に適切な tool へルーティングします。全ての普通の質問で勝手に呼び出して利用枠を消費する設計にはしていません。
 
+## 利用上限・レート制限
+
+Grok CLIが無料枠、週間利用枠、クレジット、またはHTTP 429のレート制限を返した場合、pluginは通常エラーと区別して次を表示します。
+
+```text
+Grokの利用上限またはレート制限に達しました。
+
+利用を続けるには、SuperGrokプランへアップグレードしてください。
+[SuperGrokプランを確認・アップグレード](https://grok.com/supergrok?referrer=pricing&target=supergrok)
+
+利用枠のリセットを待ってから再試行することもできます。
+
+Grok CLIの元エラー:
+<original error>
+```
+
+MCPの`structuredContent`にも`error_type: usage_limit`、`upgrade_plan: SuperGrok`、`upgrade_url`、`original_error`を返します。自動再試行や推論レベルの無断引き下げは行いません。
+
 ## 画像・動画生成前の確認
 
 画像・動画を生成する前に、ホストAIは`AskUserQuestion`、`request_user_input`などの構造化質問UIで未指定の設定を確認します。既に指定された項目は聞き直しません。「任せる」と言われた場合は推奨値を選びます。
